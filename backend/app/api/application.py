@@ -3,8 +3,6 @@ from sqlalchemy.orm import Session
 
 from app.core.dependencies import get_db, get_current_user
 from app.models.user import User
-from app.models.student import Student
-from app.models.application import Application
 from app.schemas.application import (
     ApplicationCreate,
     ApplicationResponse,
@@ -17,9 +15,11 @@ from app.schemas.payment import PaymentStatusResponse
 from app.services.application_service import (
     create_application,
     list_applications,
+    list_student_applications,
     get_application_status,
     get_application_deficiencies,
 )
+from app.services.student_service import get_student_by_user
 from app.services.payment_service import get_payment_status
 from app.services.application_document_service import (
     link_document_to_application,
@@ -36,10 +36,11 @@ def get_my_applications_api(
     db: Session = Depends(get_db),
 ):
     """Retrieve all applications belonging to the currently authenticated student."""
-    student = db.query(Student).filter(Student.user_id == current_user.id).first()
+    student = get_student_by_user(db, current_user.id)
     if not student:
         return []
-    return db.query(Application).filter(Application.student_id == student.id).all()
+    return list_student_applications(db, student.id)
+
 
 
 @router.post("", response_model=ApplicationResponse)

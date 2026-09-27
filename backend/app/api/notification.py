@@ -2,14 +2,15 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.core.dependencies import get_current_user, get_current_user_optional, get_db
-from app.models.student import Student
 from app.models.user import User
+
 from app.schemas.notification import NotificationCreate, NotificationResponse
 from app.services.notification_service import (
     create_notification,
     list_notifications,
     mark_as_read,
 )
+from app.services.student_service import get_student_by_user
 
 router = APIRouter(tags=["Notifications"])
 
@@ -22,7 +23,7 @@ def get_my_notifications_api(
     db: Session = Depends(get_db),
 ):
     """Retrieve notifications belonging to the currently authenticated student."""
-    student = db.query(Student).filter(Student.user_id == current_user.id).first()
+    student = get_student_by_user(db, current_user.id)
     if not student:
         return []
     return list_notifications(db, student_id=student.id, unread_only=unread_only)
@@ -38,11 +39,12 @@ def get_notifications_api(
 ):
     # Contextual resolution: If student_id is not explicitly provided but user is authenticated
     if student_id is None and current_user is not None:
-        student = db.query(Student).filter(Student.user_id == current_user.id).first()
+        student = get_student_by_user(db, current_user.id)
         if student:
             student_id = student.id
         else:
             return []
+
 
     result = list_notifications(db, student_id=student_id, unread_only=unread_only)
     if result == "STUDENT_NOT_FOUND":

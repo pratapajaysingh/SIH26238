@@ -7,12 +7,11 @@ from app.schemas.eligibility import EligibilityCheckRequest
 from app.services.application_service import (
     get_application_status,
     get_application_deficiencies,
+    list_student_applications,
 )
 from app.services.payment_service import get_payment_status
 from app.services.eligibility_service import check_eligibility
-from app.models.user import User
-from app.models.student import Student
-from app.models.application import Application
+from app.services.student_service import get_student_by_user
 from app.seed import DEMO_STUDENT_ID, DEMO_SCHOLARSHIPS
 
 UUID_REGEX = re.compile(
@@ -108,7 +107,7 @@ def detect_intent(message: str, explicit_intent: str | None = None) -> str:
 
 def _extract_application_id(
     request: JagoMessageRequest,
-    current_user: User | None = None,
+    current_user: Any = None,
     db: Session | None = None,
 ) -> str | None:
     if request.application_id and request.application_id.strip():
@@ -123,15 +122,11 @@ def _extract_application_id(
     if matches:
         return matches[0]
 
-    # Contextual user resolution: If authenticated, resolve student's application
-    if current_user and db:
-        student = db.query(Student).filter(Student.user_id == current_user.id).first()
+    # Contextual user resolution: If authenticated, resolve student's application via approved services
+    if current_user and db and hasattr(current_user, "id"):
+        student = get_student_by_user(db, current_user.id)
         if student:
-            user_apps = (
-                db.query(Application)
-                .filter(Application.student_id == student.id)
-                .all()
-            )
+            user_apps = list_student_applications(db, student.id)
             if user_apps:
                 return user_apps[-1].id
 
@@ -140,7 +135,7 @@ def _extract_application_id(
 
 def _extract_student_id(
     request: JagoMessageRequest,
-    current_user: User | None = None,
+    current_user: Any = None,
     db: Session | None = None,
 ) -> str:
     if request.student_id and request.student_id.strip():
@@ -151,9 +146,9 @@ def _extract_student_id(
         if ctx_sid and str(ctx_sid).strip():
             return str(ctx_sid).strip()
 
-    # Contextual user resolution: If authenticated, resolve student record
-    if current_user and db:
-        student = db.query(Student).filter(Student.user_id == current_user.id).first()
+    # Contextual user resolution: If authenticated, resolve student record via approved service
+    if current_user and db and hasattr(current_user, "id"):
+        student = get_student_by_user(db, current_user.id)
         if student:
             return student.id
 
@@ -162,6 +157,7 @@ def _extract_student_id(
         return matches[0]
 
     return DEMO_STUDENT_ID
+
 
 
 def _extract_scholarship_id(request: JagoMessageRequest) -> str:
@@ -184,8 +180,9 @@ def process_jago_message(
     db: Session,
     conversation_id: str,
     request: JagoMessageRequest,
-    current_user: User | None = None,
+    current_user: Any = None,
 ) -> JagoMessageResponse:
+
     """Orchestrates JAGO interactions by invoking approved domain services.
     
     JAGO does NOT directly query or manipulate database models.

@@ -5,9 +5,11 @@ from app.repositories.application_repository import (
     create_application as repo_create_application,
     get_applications,
     get_application_by_id,
+    get_applications_by_student_id,
     get_student_by_id,
     get_scholarship_by_id
 )
+
 from app.repositories.verification_repository import (
     get_verifications_by_application_id,
 )
@@ -42,6 +44,11 @@ def create_application(db: Session, application: ApplicationCreate):
 
 def list_applications(db: Session):
     return get_applications(db)
+
+
+def list_student_applications(db: Session, student_id: str):
+    return get_applications_by_student_id(db, student_id)
+
 
 
 def get_application_status(db: Session, application_id: str):

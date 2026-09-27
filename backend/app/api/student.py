@@ -3,9 +3,12 @@ from sqlalchemy.orm import Session
 
 from app.core.dependencies import get_db, get_current_user
 from app.models.user import User
-from app.models.student import Student
 from app.schemas.student import StudentCreate, StudentResponse
-from app.services.student_service import add_student, list_students
+from app.services.student_service import (
+    add_student,
+    list_students,
+    get_student_by_user,
+)
 
 router = APIRouter(prefix="/students", tags=["Students"])
 
@@ -49,7 +52,7 @@ def get_current_student_api(
     db: Session = Depends(get_db),
 ):
     """Retrieve the student profile belonging to the currently authenticated user."""
-    student = db.query(Student).filter(Student.user_id == current_user.id).first()
+    student = get_student_by_user(db, current_user.id)
     if not student:
         raise HTTPException(
             status_code=404,
