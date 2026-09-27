@@ -28,7 +28,7 @@ DRAFT, SUBMITTED, IN_VERIFICATION, DEFICIENCY, SANCTIONED, REJECTED, WITHDRAWN, 
 - Downstream modules depending on Applications:
   - **Verification:** depends on Application, documents, adapters (`GET /api/v1/applications/{id}/verifications`)
   - **Manual Review:** exception queue depends on Verification, applications
-  - **Payments:** depends on Applications, adapters (`GET /api/v1/applications/{id}/payments`)
+  - **Payments:** depends on Applications, adapters (`GET /api/v1/applications/{id}/payment-status`, with legacy alias `/payments`)
   - **Notifications:** depends on Users, applications
   - **JAGO:** calls approved service for Application status
 
@@ -114,21 +114,95 @@ Returns a list of all application records currently in the system.
   }
 ]
 ```
-- Direct JSON array of application objects (`list[ApplicationResponse]`).
-- No response envelope wrapper (consistent with Student and Scholarship endpoints).
-- *Team Decision:* Authenticated student-scoped filtering is deferred; Phase 1 returns the catalogue-style list.
 
 ---
 
-## 3. Phase-1 Deferred Features (Out of Scope for Current Step)
+### GET Endpoint: `GET /api/v1/applications/{application_id}/timeline`
 
-The following features require subsequent team contracts and must **NOT** be implemented in Phase 1:
-- Separate timeline / status history table and endpoint (`GET /api/v1/applications/{id}/timeline`)
-- `application_documents` junction table and document upload/linking
-- Verification checks and adapter interfaces
-- Manual review workflows
-- Payment tracking
-- Notifications
-- Status transition endpoints (e.g. submit, sanction, reject, withdraw)
-- `application_number`
-- Timestamps (`created_at`, `updated_at`, `submitted_at`)
+#### Purpose
+Returns the complete, chronologically ordered lifecycle history/timeline events for an application.
+
+#### Database Table: `application_timeline`
+```sql
+CREATE TABLE application_timeline (
+    id VARCHAR PRIMARY KEY,
+    application_id VARCHAR NOT NULL REFERENCES applications(id),
+    status VARCHAR NOT NULL,
+    message VARCHAR,
+    created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL
+);
+```
+
+#### Status Vocabulary
+Permitted status history values adhere strictly to the approved vocabulary:
+`DRAFT`, `SUBMITTED`, `IN_VERIFICATION`, `DEFICIENCY`, `SANCTIONED`, `REJECTED`, `WITHDRAWN`, `COMPLETED`
+
+#### Success Response (`HTTP 200 OK`)
+```json
+[
+  {
+    "id": "00000000-0000-0000-0000-000000000060",
+    "application_id": "00000000-0000-0000-0000-000000000020",
+    "status": "DRAFT",
+    "message": "Application drafted by student",
+    "created_at": "2026-09-20T10:00:00",
+    "timestamp": "2026-09-20T10:00:00"
+  }
+]
+```
+
+#### Error Response
+- **Application Not Found:** `HTTP 404 Not Found` (`{"detail": "Application not found"}`)
+
+---
+
+### POST Endpoint: `POST /api/v1/applications/{application_id}/transition`
+
+#### Purpose
+Executes a controlled, validated lifecycle status transition for an application. Atomically updates `Application.status` and appends a chronological record to `application_timeline`.
+
+*(Note: `PATCH /api/v1/applications/{application_id}/status` is supported as a non-schema alias).*
+
+#### Permitted Transition Matrix
+| Current Status | Allowed Next States |
+| :--- | :--- |
+| **`DRAFT`** | `SUBMITTED`, `WITHDRAWN` |
+| **`SUBMITTED`** | `IN_VERIFICATION`, `DEFICIENCY`, `REJECTED`, `WITHDRAWN` |
+| **`IN_VERIFICATION`** | `DEFICIENCY`, `SANCTIONED`, `REJECTED`, `WITHDRAWN` |
+| **`DEFICIENCY`** | `IN_VERIFICATION`, `SUBMITTED`, `REJECTED`, `WITHDRAWN` |
+| **`SANCTIONED`** | `COMPLETED`, `REJECTED` |
+| **`REJECTED`** | *(Terminal state - no transitions permitted)* |
+| **`WITHDRAWN`** | *(Terminal state - no transitions permitted)* |
+| **`COMPLETED`** | *(Terminal state - no transitions permitted)* |
+
+#### Request Payload
+```json
+{
+  "status": "SUBMITTED",
+  "message": "Application submitted by student"
+}
+```
+
+#### Success Response (`HTTP 200 OK`)
+```json
+{
+  "id": "00000000-0000-0000-0000-000000000020",
+  "status": "SUBMITTED",
+  "previous_status": "DRAFT",
+  "message": "Application submitted by student"
+}
+```
+
+#### Error Responses
+- **Application Not Found:** `HTTP 404 Not Found` (`{"detail": "Application not found"}`)
+- **Unapproved Status String:** `HTTP 400 Bad Request` (`{"detail": "Invalid status '...'. Allowed statuses: DRAFT, SUBMITTED, IN_VERIFICATION, DEFICIENCY, SANCTIONED, REJECTED, WITHDRAWN, COMPLETED"}`)
+- **Disallowed Transition:** `HTTP 400 Bad Request` (`{"detail": "Cannot transition application from '<current>' to '<target>'. Allowed next states: [...]"}`)
+
+---
+
+## 3. Implementation Status & Limitations
+
+- **Lifecycle State Transitions:** Implemented via `POST /api/v1/applications/{application_id}/transition`. Atomically updates application status and records an `ApplicationTimeline` event.
+- **Timeline Tracking:** Implemented via dedicated `application_timeline` table, preserving separation of current status and chronological history. Initial applications automatically record a `DRAFT` event.
+- **Payment / DBT Status:** Approved canonical endpoint is `GET /api/v1/applications/{application_id}/payment-status` (with a non-schema compatibility alias at `/payments`). Operates in deterministic prototype simulation mode (`evaluation_mode: "MOCK"`).
+- **Government Adapters:** Architectural adapter boundaries are implemented under `app.integrations` for DigiLocker, NSP, SFMP/PFMS, NOS, APAAR, UDISE+, AISHE, UIDAI, State e-District, and UGC/NTA. No live government APIs are called without authorized government onboarding and production credentials.

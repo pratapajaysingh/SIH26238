@@ -22,3 +22,16 @@ def get_application_by_id(db: Session, application_id: str):
 def get_applications_by_student_id(db: Session, student_id: str):
     return db.query(Application).filter(Application.student_id == student_id).all()
 
+
+def update_application_status(
+    db: Session,
+    application: Application,
+    status: str,
+    commit: bool = True,
+) -> Application:
+    application.status = status
+    if commit:
+        db.commit()
+        db.refresh(application)
+    return application
+

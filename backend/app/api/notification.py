@@ -12,6 +12,8 @@ from app.services.notification_service import (
 )
 from app.services.student_service import get_student_by_user
 
+from app.repositories.notification_repository import get_notification_by_id
+
 router = APIRouter(tags=["Notifications"])
 
 
@@ -37,14 +39,18 @@ def get_notifications_api(
     current_user: User | None = Depends(get_current_user_optional),
     db: Session = Depends(get_db),
 ):
-    # Contextual resolution: If student_id is not explicitly provided but user is authenticated
-    if student_id is None and current_user is not None:
+    if current_user:
         student = get_student_by_user(db, current_user.id)
-        if student:
-            student_id = student.id
-        else:
-            return []
-
+        if student_id is None:
+            if student:
+                student_id = student.id
+            else:
+                return []
+        elif not student or student_id != student.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied: Cannot access another student's notifications",
+            )
 
     result = list_notifications(db, student_id=student_id, unread_only=unread_only)
     if result == "STUDENT_NOT_FOUND":
@@ -61,8 +67,17 @@ def get_notifications_api(
 def get_student_notifications_api(
     student_id: str,
     unread_only: bool = False,
+    current_user: User | None = Depends(get_current_user_optional),
     db: Session = Depends(get_db),
 ):
+    if current_user:
+        student = get_student_by_user(db, current_user.id)
+        if not student or student_id != student.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied: Cannot access another student's notifications",
+            )
+
     result = list_notifications(db, student_id=student_id, unread_only=unread_only)
     if result == "STUDENT_NOT_FOUND":
         raise HTTPException(
@@ -78,8 +93,23 @@ def get_student_notifications_api(
 @router.post("/notifications/{notification_id}/read/", response_model=NotificationResponse, include_in_schema=False)
 def mark_notification_read_api(
     notification_id: str,
+    current_user: User | None = Depends(get_current_user_optional),
     db: Session = Depends(get_db),
 ):
+    if current_user:
+        student = get_student_by_user(db, current_user.id)
+        if not student:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied: No student profile associated with user",
+            )
+        notif = get_notification_by_id(db, notification_id)
+        if notif and notif.student_id != student.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied: Cannot modify another student's notification",
+            )
+
     result = mark_as_read(db, notification_id)
     if result == "NOTIFICATION_NOT_FOUND":
         raise HTTPException(
@@ -93,8 +123,17 @@ def mark_notification_read_api(
 @router.post("/notifications/", response_model=NotificationResponse, status_code=status.HTTP_201_CREATED, include_in_schema=False)
 def create_notification_api(
     payload: NotificationCreate,
+    current_user: User | None = Depends(get_current_user_optional),
     db: Session = Depends(get_db),
 ):
+    if current_user:
+        student = get_student_by_user(db, current_user.id)
+        if not student or payload.student_id != student.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied: Students cannot send notifications to other students",
+            )
+
     result = create_notification(db, payload)
     if result == "STUDENT_NOT_FOUND":
         raise HTTPException(

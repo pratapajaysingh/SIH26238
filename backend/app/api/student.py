@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from app.core.dependencies import get_db, get_current_user
+from app.core.dependencies import get_db, get_current_user, get_current_user_optional
 from app.models.user import User
 from app.schemas.student import StudentCreate, StudentResponse
 from app.services.student_service import (
@@ -15,7 +15,16 @@ router = APIRouter(prefix="/students", tags=["Students"])
 
 @router.post("", response_model=StudentResponse)
 @router.post("/", response_model=StudentResponse, include_in_schema=False)
-def add_student_api(student: StudentCreate, db: Session = Depends(get_db)):
+def add_student_api(
+    student: StudentCreate,
+    current_user: User | None = Depends(get_current_user_optional),
+    db: Session = Depends(get_db)
+):
+    if current_user and student.user_id != current_user.id:
+        raise HTTPException(
+            status_code=403,
+            detail="Access denied: Cannot create student profile for another user",
+        )
     result = add_student(db, student)
 
     if result == "USER_NOT_FOUND":

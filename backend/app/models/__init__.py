@@ -7,16 +7,19 @@ from app.models.application_document import ApplicationDocument
 from app.models.verification_record import VerificationRecord
 from app.models.manual_review import ManualReview
 from app.models.notification import Notification
+from app.models.application_timeline import ApplicationTimeline
 
 __all__ = [
     "User",
     "Student",
     "Scholarship",
     "Application",
+    "ApplicationTimeline",
     "Document",
     "ApplicationDocument",
     "VerificationRecord",
     "ManualReview",
     "Notification",
 ]
+
 

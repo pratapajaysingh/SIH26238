@@ -1,4 +1,5 @@
-from pydantic import BaseModel
+from datetime import datetime
+from pydantic import BaseModel, model_validator
 
 
 class ApplicationCreate(BaseModel):
@@ -38,6 +39,39 @@ class ApplicationDeficiencyResponse(BaseModel):
     severity: str
     message: str
     reason: str
+
+    class Config:
+        from_attributes = True
+
+
+class TimelineEventResponse(BaseModel):
+    id: str
+    application_id: str
+    status: str
+    message: str | None = None
+    created_at: datetime | str
+    timestamp: datetime | str | None = None
+
+    class Config:
+        from_attributes = True
+
+    @model_validator(mode="after")
+    def populate_timestamp(self):
+        if not self.timestamp:
+            self.timestamp = self.created_at
+        return self
+
+
+class ApplicationStatusTransitionRequest(BaseModel):
+    status: str
+    message: str | None = None
+
+
+class ApplicationTransitionResponse(BaseModel):
+    id: str
+    status: str
+    previous_status: str
+    message: str | None = None
 
     class Config:
         from_attributes = True
