@@ -4,6 +4,7 @@ from sqlalchemy import text
 
 from app.core.config import get_cors_origins
 from app.core.database import engine
+from app.api.auth import router as auth_router
 from app.api.student import router as student_router
 from app.api.user import router as user_router
 from app.api.scholarship import router as scholarship_router
@@ -13,6 +14,8 @@ from app.api.eligibility import router as eligibility_router
 from app.api.verification import router as verification_router
 from app.api.manual_review import router as manual_review_router
 from app.api.digilocker import router as digilocker_router
+from app.api.jago import router as jago_router
+from app.api.notification import router as notification_router
 
 app = FastAPI(title="TribalSetu API")
 
@@ -26,6 +29,7 @@ app.add_middleware(
 )
 
 # Core API routes
+app.include_router(auth_router, prefix="/api/v1")
 app.include_router(student_router, prefix="/api/v1")
 app.include_router(user_router, prefix="/api/v1")
 app.include_router(scholarship_router, prefix="/api/v1")
@@ -35,6 +39,9 @@ app.include_router(eligibility_router, prefix="/api/v1")
 app.include_router(verification_router, prefix="/api/v1")
 app.include_router(manual_review_router, prefix="/api/v1")
 app.include_router(digilocker_router, prefix="/api/v1")
+app.include_router(jago_router, prefix="/api/v1")
+app.include_router(notification_router, prefix="/api/v1")
+
 
 
 @app.get("/")

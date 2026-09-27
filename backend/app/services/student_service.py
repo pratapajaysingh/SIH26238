@@ -35,3 +35,7 @@ def add_student(db: Session, student: StudentCreate):
 
 def list_students(db: Session):
     return get_students(db)
+
+
+def get_student_by_user(db: Session, user_id: str):
+    return get_student_by_user_id(db, user_id)

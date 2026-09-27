@@ -1,6 +1,6 @@
 # TribalSetu Backend - Frontend Integration Contract
 
-**Document Version:** 1.0.0  
+**Document Version:** 2.0.0  
 **Target Client:** Flutter Mobile & Web Application  
 **Base URL (Local Development):** `http://localhost:8000` (or `http://10.0.2.2:8000` for Android Emulator)  
 **API Documentation (Swagger UI):** `http://localhost:8000/docs`  
@@ -8,15 +8,16 @@
 
 ---
 
-## 1. Authentication Status (Honest Disclosure)
+## 1. Authentication Status & JWT Integration
 
-> [!IMPORTANT]  
+> [!NOTE]  
 > **Current Authentication Implementation Status:**  
-> - User registration (`POST /api/v1/users`) and login verification (`POST /api/v1/users/login`) are implemented using salted `bcrypt` password hashes.  
-> - **Bearer tokens, JWT access/refresh tokens, and cookie-based sessions are NOT yet implemented.**  
-> - The login endpoint validates credentials and returns the basic `UserResponse` object (`id`, `name`, `email`).  
-> - Downstream endpoints (such as `applications`, `documents`, `students`) currently expect explicit IDs in request bodies and URL paths rather than reading user identity from an `Authorization` header.  
-> - Do not attempt to pass `Authorization: Bearer <token>` expecting token introspection.
+> - **JWT Authentication:** Implemented using standard RFC 7519 HMAC-SHA256 (`HS256`) tokens.  
+> - **Login:** Clients authenticate via `POST /api/v1/auth/login` and receive a standard Bearer access token: `{"access_token": "...", "token_type": "bearer"}`.  
+> - **Bearer Token Usage:** Send the header `Authorization: Bearer <access_token>` on protected and context-aware endpoints.  
+> - **Profile Access:** Use `GET /api/v1/auth/me`, `GET /api/v1/users/me`, or `GET /api/v1/students/me` to retrieve the active user and student profile.  
+> - **Protected Endpoints:** Automatically identify the caller and return `401 Unauthorized` for missing, expired, or malformed tokens.  
+> - **JAGO & Notifications Integration:** Authenticated requests automatically resolve student and application context without forcing the frontend to manually provide IDs.
 
 ---
 
@@ -66,9 +67,45 @@
 
 ---
 
-## 3. Users & Auth APIs
+## 3. Authentication & User APIs
 
-### 3.1 Register User
+### 3.1 Authenticate & Obtain Token (JWT Login)
+- **METHOD:** `POST`
+- **PATH:** `/api/v1/auth/login`
+- **REQUEST:** Accepts `email` or `username` along with `password`:
+  ```json
+  {
+    "email": "demo.student@example.com",
+    "password": "DemoPassword123!"
+  }
+  ```
+- **RESPONSE (`200 OK`):**
+  ```json
+  {
+    "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "token_type": "bearer"
+  }
+  ```
+- **COMMON ERRORS:**
+  - `401 Unauthorized`: `{"detail": "Invalid credentials"}`
+  - `422 Unprocessable Entity`: Missing required fields.
+
+### 3.2 Get Current User Profile
+- **METHOD:** `GET`
+- **PATH:** `/api/v1/auth/me` (or `/api/v1/users/me`)
+- **HEADERS:** `Authorization: Bearer <token>`
+- **RESPONSE (`200 OK`):**
+  ```json
+  {
+    "id": "00000000-0000-0000-0000-000000000001",
+    "name": "Demo Student User",
+    "email": "demo.student@example.com"
+  }
+  ```
+- **COMMON ERRORS:**
+  - `401 Unauthorized`: `{"detail": "Missing Authorization header"}` / `{"detail": "Token has expired"}`
+
+### 3.3 Register User
 - **METHOD:** `POST`
 - **PATH:** `/api/v1/users`
 - **REQUEST:**
@@ -91,7 +128,7 @@
   - `409 Conflict`: `{"detail": "Email already exists"}`
   - `422 Unprocessable Entity`: Invalid email format or missing fields.
 
-### 3.2 Login User
+### 3.4 Legacy User Login
 - **METHOD:** `POST`
 - **PATH:** `/api/v1/users/login`
 - **REQUEST:**
@@ -109,14 +146,29 @@
     "email": "ravi.kumar@example.com"
   }
   ```
-- **COMMON ERRORS:**
-  - `401 Unauthorized`: `{"detail": "Invalid email or password"}`
 
 ---
 
 ## 4. Student Profile APIs
 
-### 4.1 Create Student Profile
+### 4.1 Get Authenticated Student Profile
+- **METHOD:** `GET`
+- **PATH:** `/api/v1/students/me`
+- **HEADERS:** `Authorization: Bearer <token>`
+- **RESPONSE (`200 OK`):**
+  ```json
+  {
+    "id": "00000000-0000-0000-0000-000000000002",
+    "user_id": "00000000-0000-0000-0000-000000000001",
+    "name": "Demo Student User",
+    "email": "demo.student@example.com"
+  }
+  ```
+- **COMMON ERRORS:**
+  - `401 Unauthorized`: Missing or invalid token.
+  - `404 Not Found`: `{"detail": "Student profile not found for authenticated user"}`
+
+### 4.2 Create Student Profile
 - **METHOD:** `POST`
 - **PATH:** `/api/v1/students`
 - **REQUEST:**
@@ -141,7 +193,7 @@
   - `409 Conflict`: `{"detail": "Student profile already exists for this user"}`
   - `409 Conflict`: `{"detail": "Email already registered for another student"}`
 
-### 4.2 List Students
+### 4.3 List Students
 - **METHOD:** `GET`
 - **PATH:** `/api/v1/students`
 - **REQUEST:** None
@@ -180,7 +232,6 @@
     }
   ]
   ```
-- **NOTE ON ELIGIBILITY:** Per team contract decisions (`docs/api/scholarships.md`), `eligible` is intentionally separate from static catalogue persistence and is evaluated on-demand via the Eligibility endpoint.
 
 ---
 
@@ -211,13 +262,28 @@
 - **COMMON ERRORS:**
   - `404 Not Found`: `{"detail": "Student not found"}`
   - `404 Not Found`: `{"detail": "Scholarship not found"}`
-- **NOTE:** Current evaluation runs the mock evaluator; official government policy rules have not been configured yet.
 
 ---
 
-## 7. Applications & Document Linking
+## 7. Applications & Tracking APIs
 
-### 7.1 Create Application
+### 7.1 Get My Applications (Authenticated)
+- **METHOD:** `GET`
+- **PATH:** `/api/v1/applications/me`
+- **HEADERS:** `Authorization: Bearer <token>`
+- **RESPONSE (`200 OK`):**
+  ```json
+  [
+    {
+      "id": "00000000-0000-0000-0000-000000000020",
+      "student_id": "00000000-0000-0000-0000-000000000002",
+      "scholarship_id": "00000000-0000-0000-0000-000000000010",
+      "status": "DRAFT"
+    }
+  ]
+  ```
+
+### 7.2 Create Application
 - **METHOD:** `POST`
 - **PATH:** `/api/v1/applications`
 - **REQUEST:**
@@ -236,275 +302,194 @@
     "status": "DRAFT"
   }
   ```
-- **COMMON ERRORS:**
-  - `404 Not Found`: `{"detail": "Student not found"}`
-  - `404 Not Found`: `{"detail": "Scholarship not found"}`
 
-### 7.2 List Applications
+### 7.3 Get Application Status
 - **METHOD:** `GET`
-- **PATH:** `/api/v1/applications`
-- **REQUEST:** None
-- **RESPONSE (`200 OK`):**
-  ```json
-  [
-    {
-      "id": "33333333-4444-5555-6666-777777777777",
-      "student_id": "22222222-3333-4444-5555-666666666666",
-      "scholarship_id": "00000000-0000-0000-0000-000000000010",
-      "status": "DRAFT"
-    }
-  ]
-  ```
-
-### 7.3 Link Document to Application
-- **METHOD:** `POST`
-- **PATH:** `/api/v1/applications/{application_id}/documents`
-- **REQUEST:**
-  ```json
-  {
-    "document_id": "44444444-5555-6666-7777-888888888888"
-  }
-  ```
+- **PATH:** `/api/v1/applications/{application_id}/status`
 - **RESPONSE (`200 OK`):**
   ```json
   {
-    "application_id": "33333333-4444-5555-6666-777777777777",
-    "document_id": "44444444-5555-6666-7777-888888888888"
+    "id": "00000000-0000-0000-0000-000000000020",
+    "status": "DRAFT"
   }
   ```
 - **COMMON ERRORS:**
   - `404 Not Found`: `{"detail": "Application not found"}`
-  - `404 Not Found`: `{"detail": "Document not found"}`
-  - `409 Conflict`: `{"detail": "Document does not belong to application student"}`
-  - `409 Conflict`: `{"detail": "Document already linked to application"}`
 
-### 7.4 List Documents Attached to Application
+### 7.4 Get Application Deficiencies
 - **METHOD:** `GET`
-- **PATH:** `/api/v1/applications/{application_id}/documents`
-- **REQUEST:** None
+- **PATH:** `/api/v1/applications/{application_id}/deficiencies`
 - **RESPONSE (`200 OK`):**
   ```json
   [
     {
-      "id": "44444444-5555-6666-7777-888888888888",
-      "student_id": "22222222-3333-4444-5555-666666666666",
-      "document_type": "MOCK_ST_CERTIFICATE",
+      "id": "def-rec-00000000-0000-0000-0000-000000000040",
+      "application_id": "00000000-0000-0000-0000-000000000020",
+      "deficiency_type": "DOCUMENT_MISMATCH",
+      "type": "DOCUMENT_MISMATCH",
+      "category": "VERIFICATION",
+      "document_id": "00000000-0000-0000-0000-000000000030",
       "document_name": "ST Certificate",
-      "status": "PENDING"
-    }
-  ]
-  ```
-
----
-
-## 8. Documents Repository
-
-### 8.1 Register Document Metadata
-- **METHOD:** `POST`
-- **PATH:** `/api/v1/documents`
-- **REQUEST:**
-  ```json
-  {
-    "student_id": "22222222-3333-4444-5555-666666666666",
-    "document_type": "MOCK_ST_CERTIFICATE",
-    "document_name": "ST Certificate"
-  }
-  ```
-- **RESPONSE (`200 OK`):**
-  ```json
-  {
-    "id": "44444444-5555-6666-7777-888888888888",
-    "student_id": "22222222-3333-4444-5555-666666666666",
-    "document_type": "MOCK_ST_CERTIFICATE",
-    "document_name": "ST Certificate",
-    "status": "PENDING"
-  }
-  ```
-- **COMMON ERRORS:**
-  - `404 Not Found`: `{"detail": "Student not found"}`
-
-### 8.2 List Registered Documents
-- **METHOD:** `GET`
-- **PATH:** `/api/v1/documents`
-- **REQUEST:** None
-- **RESPONSE (`200 OK`):**
-  ```json
-  [
-    {
-      "id": "44444444-5555-6666-7777-888888888888",
-      "student_id": "22222222-3333-4444-5555-666666666666",
       "document_type": "MOCK_ST_CERTIFICATE",
-      "document_name": "ST Certificate",
-      "status": "PENDING"
+      "verification_id": "00000000-0000-0000-0000-000000000040",
+      "status": "MISMATCH",
+      "severity": "HIGH",
+      "message": "Document verification mismatch requires correction or review",
+      "reason": "Document verification mismatch requires correction or review"
     }
   ]
   ```
 
----
-
-## 9. DigiLocker (Simulated Adapter)
-
-### 9.1 Browse Mock DigiLocker Certificates
+### 7.5 Get Payment / DBT Status
 - **METHOD:** `GET`
-- **PATH:** `/api/v1/students/{student_id}/digilocker/documents`
-- **REQUEST:** None
-- **RESPONSE (`200 OK`):**
-  ```json
-  [
-    {
-      "document_type": "MOCK_ST_CERTIFICATE",
-      "document_name": "ST Certificate"
-    },
-    {
-      "document_type": "MOCK_INCOME_CERTIFICATE",
-      "document_name": "Income Certificate"
-    },
-    {
-      "document_type": "MOCK_CLASS_12_MARKSHEET",
-      "document_name": "Class 12 Marksheet"
-    },
-    {
-      "document_type": "MOCK_DOMICILE_CERTIFICATE",
-      "document_name": "Domicile Certificate"
-    }
-  ]
-  ```
-
-### 9.2 Import Mock Certificate to Student Documents
-- **METHOD:** `POST`
-- **PATH:** `/api/v1/students/{student_id}/digilocker/documents/import`
-- **REQUEST:**
-  ```json
-  {
-    "document_type": "MOCK_ST_CERTIFICATE"
-  }
-  ```
+- **PATH:** `/api/v1/applications/{application_id}/payment-status`
 - **RESPONSE (`200 OK`):**
   ```json
   {
-    "id": "44444444-5555-6666-7777-888888888888",
-    "student_id": "22222222-3333-4444-5555-666666666666",
-    "document_type": "MOCK_ST_CERTIFICATE",
-    "document_name": "ST Certificate",
-    "status": "PENDING"
-  }
-  ```
-- **COMMON ERRORS:**
-  - `404 Not Found`: `{"detail": "Student not found"}`
-  - `404 Not Found`: `{"detail": "Mock DigiLocker document not found"}`
-  - `409 Conflict`: `{"detail": "Mock DigiLocker document already imported"}`
-
----
-
-## 10. Verification & Manual Review Pipeline
-
-### 10.1 Create Verification Record
-- **METHOD:** `POST`
-- **PATH:** `/api/v1/applications/{application_id}/verifications`
-- **REQUEST:**
-  ```json
-  {
-    "document_id": "44444444-5555-6666-7777-888888888888"
-  }
-  ```
-- **RESPONSE (`200 OK`):**
-  ```json
-  {
-    "id": "55555555-6666-7777-8888-999999999999",
-    "application_id": "33333333-4444-5555-6666-777777777777",
-    "document_id": "44444444-5555-6666-7777-888888888888",
-    "status": "PENDING"
-  }
-  ```
-- **COMMON ERRORS:**
-  - `404 Not Found`: `{"detail": "Application not found"}` / `{"detail": "Document not found"}`
-  - `409 Conflict`: `{"detail": "Document is not linked to application"}`
-  - `409 Conflict`: `{"detail": "Verification record already exists"}`
-
-### 10.2 List Application Verifications
-- **METHOD:** `GET`
-- **PATH:** `/api/v1/applications/{application_id}/verifications`
-- **REQUEST:** None
-- **RESPONSE (`200 OK`):**
-  ```json
-  [
-    {
-      "id": "55555555-6666-7777-8888-999999999999",
-      "application_id": "33333333-4444-5555-6666-777777777777",
-      "document_id": "44444444-5555-6666-7777-888888888888",
-      "status": "PENDING"
-    }
-  ]
-  ```
-
-### 10.3 Execute Verification (Mock Adapter)
-- **METHOD:** `POST`
-- **PATH:** `/api/v1/verifications/{verification_id}/execute`
-- **REQUEST:** None
-- **RESPONSE (`200 OK`):**
-  ```json
-  {
-    "id": "55555555-6666-7777-8888-999999999999",
-    "application_id": "33333333-4444-5555-6666-777777777777",
-    "document_id": "44444444-5555-6666-7777-888888888888",
-    "status": "VERIFIED",
-    "message": "Mock document successfully verified against simulated issuer registry",
+    "application_id": "00000000-0000-0000-0000-000000000020",
+    "status": "PENDING_VERIFICATION",
+    "message": "Application is pending document verification before sanction",
+    "disbursement_mode": "MOCK_DBT",
+    "payment_reference": null,
     "evaluation_mode": "MOCK"
   }
+
   ```
+- **NOTE ON PAYMENT:** Uses synthetic DBT status derivation based on scholarship application lifecycle state (`DRAFT`, `SUBMITTED`, `VERIFIED`, `APPROVED`, `DISBURSED`, `DEFICIENCY`). No real banking or payment gateways are touched in prototype mode.
+
+---
+
+## 8. Notifications APIs
+
+### 8.1 Get Current Student Notifications (Authenticated)
+- **METHOD:** `GET`
+- **PATH:** `/api/v1/notifications/me` (or `/api/v1/notifications` with Bearer token)
+- **HEADERS:** `Authorization: Bearer <token>`
+- **QUERY PARAMS:** `unread_only` (boolean, optional, default: `false`)
+- **RESPONSE (`200 OK`):**
+  ```json
+  [
+    {
+      "id": "00000000-0000-0000-0000-000000000050",
+      "student_id": "00000000-0000-0000-0000-000000000002",
+      "application_id": "00000000-0000-0000-0000-000000000020",
+      "title": "Application Initialized",
+      "message": "Your scholarship application for Post-Matric Scholarship has been created as a draft.",
+      "category": "APPLICATION_UPDATE",
+      "notification_type": "APPLICATION_UPDATE",
+      "is_read": true,
+      "created_at": "2026-09-27T18:00:00"
+    }
+  ]
+  ```
+
+### 8.2 Mark Notification as Read
+- **METHOD:** `PATCH` (or `POST`)
+- **PATH:** `/api/v1/notifications/{notification_id}/read`
+- **RESPONSE (`200 OK`):**
+  ```json
+  {
+    "id": "00000000-0000-0000-0000-000000000051",
+    "is_read": true
+  }
+  ```
+
+### 8.3 Create Notification (Admin / System)
+- **METHOD:** `POST`
+- **PATH:** `/api/v1/notifications`
+- **REQUEST:**
+  ```json
+  {
+    "student_id": "00000000-0000-0000-0000-000000000002",
+    "application_id": "00000000-0000-0000-0000-000000000020",
+    "title": "Document Verification Required",
+    "message": "Please re-upload your income certificate.",
+    "category": "DEFICIENCY"
+  }
+  ```
+- **RESPONSE (`201 Created`):** Returns the created `NotificationResponse`.
+
+---
+
+## 9. JAGO Conversational Assistant
+
+### 9.1 Send Inquiry Message
+- **METHOD:** `POST`
+- **PATH:** `/api/v1/jago/conversations/{conversation_id}/messages`
+- **HEADERS:** `Authorization: Bearer <token>` (optional, enables automatic student/application context resolution)
+- **REQUEST:**
+  ```json
+  {
+    "message": "What is my payment status?"
+  }
+  ```
+  *(Note: If authenticated, `application_id` and `student_id` are automatically deduced from the caller's active application and student profile! If unauthenticated, `application_id` can be supplied in the body, in `context`, or inline in the message text).*
+- **RESPONSE (`200 OK`):**
+  ```json
+  {
+    "conversation_id": "conv-101",
+    "intent": "PAYMENT_STATUS",
+    "message": "Your DBT payment status is 'PENDING_VERIFICATION': Application is pending document verification before sanction (Simulated prototype mode)",
+    "data": {
+      "application_id": "00000000-0000-0000-0000-000000000020",
+      "status": "PENDING_VERIFICATION",
+      "message": "Application is pending document verification before sanction",
+      "disbursement_mode": "DIRECT_BENEFIT_TRANSFER",
+      "payment_reference": null,
+      "evaluation_mode": "MOCK"
+    },
+    "source": "payment_service.get_payment_status",
+    "suggestions": [
+      "Check status for 00000000-0000-0000-0000-000000000020",
+      "Check deficiencies for 00000000-0000-0000-0000-000000000020"
+    ]
+  }
+  ```
+- **SUPPORTED INTENTS:**
+  - `APPLICATION_STATUS`: Inquires about current stage and lifecycle status.
+  - `APPLICATION_DEFICIENCIES`: Inquires about document mismatches or flagged defects.
+  - `PAYMENT_STATUS`: Inquires about DBT release and sanction state.
+  - `ELIGIBILITY`: Assesses scheme eligibility for student schemes.
+  - `UNKNOWN`: Graceful fallback providing recommended inquiry suggestions.
+
+---
+
+## 10. Documents & Verification Pipeline
+
+### 10.1 Link Document to Application
+- **METHOD:** `POST`
+- **PATH:** `/api/v1/applications/{application_id}/documents`
+- **REQUEST:** `{"document_id": "44444444-5555-6666-7777-888888888888"}`
+
+### 10.2 Create Verification Record
+- **METHOD:** `POST`
+- **PATH:** `/api/v1/applications/{application_id}/verifications`
+- **REQUEST:** `{"document_id": "44444444-5555-6666-7777-888888888888"}`
+
+### 10.3 Execute Verification (Mock Engine)
+- **METHOD:** `POST`
+- **PATH:** `/api/v1/verifications/{verification_id}/execute`
 - **DETERMINISTIC SIMULATION BEHAVIOR:**
   - `document_type == "TEST_VERIFIED"` -> `status: "VERIFIED"`
   - `document_type == "TEST_MISMATCH"` -> `status: "MISMATCH"`
   - `document_type == "TEST_FAILED"` -> `status: "FAILED"`
-  - Other document types -> `status: "FAILED"`
-- **COMMON ERRORS:**
-  - `404 Not Found`: `{"detail": "Verification record not found"}`
-  - `409 Conflict`: `{"detail": "Verification record is not pending"}`
 
-### 10.4 Enqueue Mismatch for Manual Review
+### 10.4 Enqueue Manual Review
 - **METHOD:** `POST`
 - **PATH:** `/api/v1/verifications/{verification_id}/manual-review`
-- **REQUEST:** None
-- **RESPONSE (`200 OK`):**
-  ```json
-  {
-    "id": "66666666-7777-8888-9999-000000000000",
-    "application_id": "33333333-4444-5555-6666-777777777777",
-    "verification_id": "55555555-6666-7777-8888-999999999999",
-    "status": "OPEN"
-  }
-  ```
-- **COMMON ERRORS:**
-  - `404 Not Found`: `{"detail": "Verification record not found"}`
-  - `409 Conflict`: `{"detail": "Verification record is not eligible for manual review"}` (verification status must be `MISMATCH`)
-  - `409 Conflict`: `{"detail": "Manual review already exists"}`
-
-### 10.5 List Manual Reviews Queue
-- **METHOD:** `GET`
-- **PATH:** `/api/v1/manual-reviews`
-- **REQUEST:** None
-- **RESPONSE (`200 OK`):**
-  ```json
-  [
-    {
-      "id": "66666666-7777-8888-9999-000000000000",
-      "application_id": "33333333-4444-5555-6666-777777777777",
-      "verification_id": "55555555-6666-7777-8888-999999999999",
-      "status": "OPEN"
-    }
-  ]
-  ```
+- **RESTRICTION:** Verification status must be `MISMATCH`.
 
 ---
 
 ## 11. Pre-Seeded Development Demo Data
-When the database is seeded (`python -m app.seed`), the following test records are deterministically available:
+When the database is seeded (`python -m app.seed`), the following deterministic test records are available:
 
 | Entity | ID / Value | Purpose |
 | :--- | :--- | :--- |
-| **Demo User** | `00000000-0000-0000-0000-000000000001`<br>`demo.student@example.com` / `DemoPassword123!` | Test login & user lookup |
+| **Demo User** | `00000000-0000-0000-0000-000000000001`<br>`demo.student@example.com` / `DemoPassword123!` | Test login (`POST /api/v1/auth/login`) & user lookup |
 | **Demo Student** | `00000000-0000-0000-0000-000000000002`<br>`Demo Student User` | Attached to Demo User |
-| **Scholarships** | `00000000-0000-0000-0000-000000000010` (`POST_MATRIC`)<br>`00000000-0000-0000-0000-000000000011` (`PRE_MATRIC`)<br>`00000000-0000-0000-0000-000000000012` (`NATIONAL_OVERSEAS`)<br>`00000000-0000-0000-0000-000000000013` (`TOP_CLASS_EDUCATION`) | Catalogue browsing & application targets |
-| **Application** | `00000000-0000-0000-0000-000000000020`<br>Status: `DRAFT` | Target for document linking and verifications |
+| **Scholarships** | `00000000-0000-0000-0000-000000000010` (`POST_MATRIC`)<br>`00000000-0000-0000-0000-000000000011` (`PRE_MATRIC`)<br>`00000000-0000-0000-0000-000000000012` (`NATIONAL_OVERSEAS`)<br>`00000000-0000-0000-0000-000000000013` (`TOP_CLASS_EDUCATION`) | Scheme catalog & eligibility targets |
+| **Application** | `00000000-0000-0000-0000-000000000020`<br>Status: `DRAFT` | Target for status, deficiencies, payment status, JAGO |
 | **Documents** | `00000000-0000-0000-0000-000000000030` (`MOCK_ST_CERTIFICATE`)<br>`00000000-0000-0000-0000-000000000031` (`TEST_VERIFIED`)<br>`00000000-0000-0000-0000-000000000032` (`TEST_MISMATCH`) | Document linking & deterministic verification demos |
 | **Verification Record** | `00000000-0000-0000-0000-000000000040`<br>Status: `PENDING` | Ready for execution |
+| **Notifications** | `00000000-0000-0000-0000-000000000050` (Read)<br>`00000000-0000-0000-0000-000000000051` (Unread)<br>`00000000-0000-0000-0000-000000000052` (Unread) | Demo notifications for `GET /api/v1/notifications/me` |

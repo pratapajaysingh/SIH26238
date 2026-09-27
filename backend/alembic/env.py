@@ -28,6 +28,7 @@ from app.models.student import Student
 from app.models.user import User
 from app.models.verification_record import VerificationRecord
 from app.models.manual_review import ManualReview
+from app.models.notification import Notification
 
 target_metadata = Base.metadata
 

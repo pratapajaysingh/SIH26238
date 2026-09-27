@@ -17,3 +17,8 @@ def get_applications(db: Session):
 
 def get_application_by_id(db: Session, application_id: str):
     return db.query(Application).filter(Application.id == application_id).first()
+
+
+def get_applications_by_student_id(db: Session, student_id: str):
+    return db.query(Application).filter(Application.student_id == student_id).all()
+

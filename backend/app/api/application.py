@@ -1,17 +1,46 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from app.core.dependencies import get_db
-from app.schemas.application import ApplicationCreate, ApplicationResponse
+from app.core.dependencies import get_db, get_current_user
+from app.models.user import User
+from app.schemas.application import (
+    ApplicationCreate,
+    ApplicationResponse,
+    ApplicationStatusResponse,
+    ApplicationDeficiencyResponse,
+)
 from app.schemas.application_document import ApplicationDocumentCreate, ApplicationDocumentResponse
 from app.schemas.document import DocumentResponse
-from app.services.application_service import create_application, list_applications
+from app.schemas.payment import PaymentStatusResponse
+from app.services.application_service import (
+    create_application,
+    list_applications,
+    list_student_applications,
+    get_application_status,
+    get_application_deficiencies,
+)
+from app.services.student_service import get_student_by_user
+from app.services.payment_service import get_payment_status
 from app.services.application_document_service import (
     link_document_to_application,
     get_application_documents,
 )
 
 router = APIRouter(prefix="/applications", tags=["Applications"])
+
+
+@router.get("/me", response_model=list[ApplicationResponse])
+@router.get("/me/", response_model=list[ApplicationResponse], include_in_schema=False)
+def get_my_applications_api(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Retrieve all applications belonging to the currently authenticated student."""
+    student = get_student_by_user(db, current_user.id)
+    if not student:
+        return []
+    return list_student_applications(db, student.id)
+
 
 
 @router.post("", response_model=ApplicationResponse)
@@ -41,6 +70,7 @@ def create_application_api(
 @router.get("/", response_model=list[ApplicationResponse], include_in_schema=False)
 def list_applications_api(db: Session = Depends(get_db)):
     return list_applications(db)
+
 
 
 @router.post("/{application_id}/documents", response_model=ApplicationDocumentResponse)
@@ -94,3 +124,57 @@ def list_application_documents_api(
         )
 
     return result
+
+
+@router.get("/{application_id}/status", response_model=ApplicationStatusResponse)
+@router.get("/{application_id}/status/", response_model=ApplicationStatusResponse, include_in_schema=False)
+def get_application_status_api(
+    application_id: str,
+    db: Session = Depends(get_db)
+):
+    result = get_application_status(db, application_id)
+
+    if result == "APPLICATION_NOT_FOUND":
+        raise HTTPException(
+            status_code=404,
+            detail="Application not found"
+        )
+
+    return result
+
+
+@router.get("/{application_id}/deficiencies", response_model=list[ApplicationDeficiencyResponse])
+@router.get("/{application_id}/deficiencies/", response_model=list[ApplicationDeficiencyResponse], include_in_schema=False)
+def get_application_deficiencies_api(
+    application_id: str,
+    db: Session = Depends(get_db)
+):
+    result = get_application_deficiencies(db, application_id)
+
+    if result == "APPLICATION_NOT_FOUND":
+        raise HTTPException(
+            status_code=404,
+            detail="Application not found"
+        )
+
+    return result
+
+
+@router.get("/{application_id}/payment-status", response_model=PaymentStatusResponse)
+@router.get("/{application_id}/payment-status/", response_model=PaymentStatusResponse, include_in_schema=False)
+def get_payment_status_api(
+    application_id: str,
+    db: Session = Depends(get_db)
+):
+    result = get_payment_status(db, application_id)
+
+    if result == "APPLICATION_NOT_FOUND":
+        raise HTTPException(
+            status_code=404,
+            detail="Application not found"
+        )
+
+    return result
+
+
+

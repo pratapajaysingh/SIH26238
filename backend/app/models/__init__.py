@@ -6,6 +6,7 @@ from app.models.document import Document
 from app.models.application_document import ApplicationDocument
 from app.models.verification_record import VerificationRecord
 from app.models.manual_review import ManualReview
+from app.models.notification import Notification
 
 __all__ = [
     "User",
@@ -16,4 +17,6 @@ __all__ = [
     "ApplicationDocument",
     "VerificationRecord",
     "ManualReview",
+    "Notification",
 ]
+

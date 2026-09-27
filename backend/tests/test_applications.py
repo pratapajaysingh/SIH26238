@@ -1,4 +1,4 @@
-from app.seed import DEMO_STUDENT_ID, DEMO_SCHOLARSHIPS, DEMO_DOCUMENTS
+from app.seed import DEMO_STUDENT_ID, DEMO_SCHOLARSHIPS, DEMO_DOCUMENTS, DEMO_APPLICATION_ID
 
 
 def test_list_applications_seeded(client, seeded_db):
@@ -83,3 +83,99 @@ def test_link_document_to_application_and_list(client, seeded_db):
     docs = list_res.json()
     assert len(docs) == 1
     assert docs[0]["id"] == doc_id
+
+
+def test_get_application_status_success(client, seeded_db):
+    list_res = client.get("/api/v1/applications")
+    assert list_res.status_code == 200
+    apps = list_res.json()
+    assert len(apps) >= 1
+    existing_app = apps[0]
+
+    response = client.get(f"/api/v1/applications/{existing_app['id']}/status")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["id"] == existing_app["id"]
+    assert data["status"] == existing_app["status"]
+
+
+def test_get_application_status_not_found(client, seeded_db):
+    response = client.get("/api/v1/applications/non-existent-app-id/status")
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Application not found"
+
+
+def test_get_application_deficiencies_empty(client, seeded_db):
+    # Seeded application initially has only a PENDING verification, so no deficiencies
+    response = client.get(f"/api/v1/applications/{DEMO_APPLICATION_ID}/deficiencies")
+    assert response.status_code == 200
+    data = response.json()
+    assert isinstance(data, list)
+    assert data == []
+
+
+def test_get_application_deficiencies_with_issues(client, seeded_db):
+    # Link DEMO_DOCUMENTS[2] (TEST_MISMATCH) to DEMO_APPLICATION_ID
+    doc_id = DEMO_DOCUMENTS[2]["id"]
+    link_res = client.post(
+        f"/api/v1/applications/{DEMO_APPLICATION_ID}/documents",
+        json={"document_id": doc_id},
+    )
+    assert link_res.status_code == 200
+
+    # Create verification record
+    v_res = client.post(
+        f"/api/v1/applications/{DEMO_APPLICATION_ID}/verifications",
+        json={"document_id": doc_id},
+    )
+    assert v_res.status_code == 200
+    verif_id = v_res.json()["id"]
+
+    # Execute verification -> transitions to MISMATCH
+    exec_res = client.post(f"/api/v1/verifications/{verif_id}/execute")
+    assert exec_res.status_code == 200
+    assert exec_res.json()["status"] == "MISMATCH"
+
+    # Query deficiencies
+    response = client.get(f"/api/v1/applications/{DEMO_APPLICATION_ID}/deficiencies")
+    assert response.status_code == 200
+    data = response.json()
+    assert isinstance(data, list)
+    assert len(data) >= 1
+
+    item = next((d for d in data if d["verification_id"] == verif_id), None)
+    assert item is not None
+    assert item["application_id"] == DEMO_APPLICATION_ID
+    assert item["deficiency_type"] == "DOCUMENT_MISMATCH"
+    assert item["type"] == "DOCUMENT_MISMATCH"
+    assert item["category"] == "VERIFICATION"
+    assert item["document_id"] == doc_id
+    assert item["status"] == "MISMATCH"
+    assert item["severity"] == "HIGH"
+    assert "Income Certificate Demo" in item["message"]
+    assert item["reason"] == item["message"]
+
+
+def test_get_application_deficiencies_not_found(client, seeded_db):
+    response = client.get("/api/v1/applications/non-existent-app-id/deficiencies")
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Application not found"
+
+
+def test_get_application_payment_status_success(client, seeded_db):
+    response = client.get(f"/api/v1/applications/{DEMO_APPLICATION_ID}/payment-status")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["application_id"] == DEMO_APPLICATION_ID
+    assert data["status"] in ["NOT_INITIATED", "PENDING", "PROCESSING", "SUCCESS", "FAILED"]
+    assert data["disbursement_mode"] == "MOCK_DBT"
+    assert data["evaluation_mode"] == "MOCK"
+
+
+def test_get_application_payment_status_not_found(client, seeded_db):
+    response = client.get("/api/v1/applications/non-existent-app-id/payment-status")
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Application not found"
+
+
+

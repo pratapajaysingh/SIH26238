@@ -11,6 +11,7 @@ from app.models.document import Document
 from app.models.application_document import ApplicationDocument
 from app.models.verification_record import VerificationRecord
 from app.models.manual_review import ManualReview
+from app.models.notification import Notification
 
 # Deterministic Demo IDs (UUID v4 format)
 DEMO_USER_ID = "00000000-0000-0000-0000-000000000001"
@@ -67,6 +68,36 @@ DEMO_DOCUMENTS = [
 
 DEMO_VERIFICATION_ID = "00000000-0000-0000-0000-000000000040"
 
+DEMO_NOTIFICATIONS = [
+    {
+        "id": "00000000-0000-0000-0000-000000000050",
+        "student_id": DEMO_STUDENT_ID,
+        "application_id": DEMO_APPLICATION_ID,
+        "title": "Application Initialized",
+        "message": "Your scholarship application for Post-Matric Scholarship has been created as a draft.",
+        "category": "APPLICATION_UPDATE",
+        "is_read": True,
+    },
+    {
+        "id": "00000000-0000-0000-0000-000000000051",
+        "student_id": DEMO_STUDENT_ID,
+        "application_id": DEMO_APPLICATION_ID,
+        "title": "Document Verification Pending",
+        "message": "Verification is pending for your uploaded ST Certificate.",
+        "category": "VERIFICATION",
+        "is_read": False,
+    },
+    {
+        "id": "00000000-0000-0000-0000-000000000052",
+        "student_id": DEMO_STUDENT_ID,
+        "application_id": DEMO_APPLICATION_ID,
+        "title": "DBT Disbursement Update",
+        "message": "Direct Benefit Transfer initiation is pending final scheme sanction.",
+        "category": "PAYMENT",
+        "is_read": False,
+    },
+]
+
 
 def seed_database(db: Session, reset: bool = False) -> dict:
     """Idempotently seed deterministic demo/synthetic data for frontend and local integration.
@@ -75,6 +106,7 @@ def seed_database(db: Session, reset: bool = False) -> dict:
     """
     if reset:
         # Delete child records first in dependency order
+        db.query(Notification).filter(Notification.id.like("00000000-0000-0000-0000-%")).delete(synchronize_session=False)
         db.query(ManualReview).filter(ManualReview.id.like("00000000-0000-0000-0000-%")).delete(synchronize_session=False)
         db.query(VerificationRecord).filter(VerificationRecord.id.like("00000000-0000-0000-0000-%")).delete(synchronize_session=False)
         db.query(ApplicationDocument).filter(ApplicationDocument.application_id == DEMO_APPLICATION_ID).delete(synchronize_session=False)
@@ -94,6 +126,7 @@ def seed_database(db: Session, reset: bool = False) -> dict:
         "documents": 0,
         "application_documents": 0,
         "verification_records": 0,
+        "notifications": 0,
     }
 
     # 1. User
@@ -207,8 +240,30 @@ def seed_database(db: Session, reset: bool = False) -> dict:
         db.flush()
         created_counts["verification_records"] += 1
 
+    # 8. Notifications
+    for n_data in DEMO_NOTIFICATIONS:
+        notif = (
+            db.query(Notification)
+            .filter(Notification.id == n_data["id"])
+            .first()
+        )
+        if not notif:
+            notif = Notification(
+                id=n_data["id"],
+                student_id=n_data["student_id"],
+                application_id=n_data["application_id"],
+                title=n_data["title"],
+                message=n_data["message"],
+                category=n_data["category"],
+                is_read=n_data["is_read"],
+            )
+            db.add(notif)
+            db.flush()
+            created_counts["notifications"] += 1
+
     db.commit()
     return created_counts
+
 
 
 def main():

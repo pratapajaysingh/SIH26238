@@ -52,3 +52,11 @@ def get_cors_origins() -> list[str]:
         if parsed:
             return parsed
     return DEFAULT_CORS_ORIGINS
+
+
+# JWT Authentication Configuration
+DEFAULT_JWT_SECRET = "dev_secret_key_change_in_production_tribalsetu_jwt_2026"
+JWT_SECRET = os.getenv("JWT_SECRET", DEFAULT_JWT_SECRET)
+JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "60"))
+
