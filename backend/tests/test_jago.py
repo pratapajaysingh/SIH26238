@@ -156,3 +156,64 @@ def test_jago_uses_approved_services_not_direct_db(client, seeded_db):
         )
         assert response.status_code == 200
         mock_elig.assert_called_once()
+
+    # Verify payment intent delegates to get_payment_status
+    with patch("app.services.jago_service.get_payment_status") as mock_pay:
+        mock_pay.return_value = {
+            "application_id": DEMO_APPLICATION_ID,
+            "status": "NOT_INITIATED",
+            "message": "Payment has not been initiated.",
+            "disbursement_mode": "MOCK_DBT",
+            "payment_reference": None,
+            "evaluation_mode": "MOCK",
+        }
+        response = client.post(
+            f"/api/v1/jago/conversations/{conv_id}/messages",
+            json={"message": f"What is my payment status for {DEMO_APPLICATION_ID}?"},
+        )
+        assert response.status_code == 200
+        mock_pay.assert_called_once()
+
+
+def test_jago_payment_intent_success(client, seeded_db):
+    conv_id = "test-conv-10"
+    response = client.post(
+        f"/api/v1/jago/conversations/{conv_id}/messages",
+        json={"message": f"What is my payment status for application {DEMO_APPLICATION_ID}?"},
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["conversation_id"] == conv_id
+    assert data["intent"] == "PAYMENT_STATUS"
+    assert data["data"]["application_id"] == DEMO_APPLICATION_ID
+    assert data["data"]["status"] == "NOT_INITIATED"
+    assert data["data"]["disbursement_mode"] == "MOCK_DBT"
+    assert data["source"] == "payment_service.get_payment_status"
+
+
+def test_jago_payment_intent_missing_application_id(client, seeded_db):
+    conv_id = "test-conv-11"
+    response = client.post(
+        f"/api/v1/jago/conversations/{conv_id}/messages",
+        json={"message": "Has my scholarship amount been disbursed?"},
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["intent"] == "PAYMENT_STATUS"
+    assert "provide your Application ID" in data["message"]
+    assert data["data"]["error"] == "APPLICATION_ID_REQUIRED"
+
+
+def test_jago_payment_intent_nonexistent_application(client, seeded_db):
+    conv_id = "test-conv-12"
+    fake_id = "ffffffff-ffff-ffff-ffff-ffffffffffff"
+    response = client.post(
+        f"/api/v1/jago/conversations/{conv_id}/messages",
+        json={"message": f"What happened to my scholarship payment for {fake_id}?"},
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["intent"] == "PAYMENT_STATUS"
+    assert "No application found" in data["message"]
+    assert data["data"]["found"] is False
+

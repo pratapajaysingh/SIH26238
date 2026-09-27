@@ -10,12 +10,14 @@ from app.schemas.application import (
 )
 from app.schemas.application_document import ApplicationDocumentCreate, ApplicationDocumentResponse
 from app.schemas.document import DocumentResponse
+from app.schemas.payment import PaymentStatusResponse
 from app.services.application_service import (
     create_application,
     list_applications,
     get_application_status,
     get_application_deficiencies,
 )
+from app.services.payment_service import get_payment_status
 from app.services.application_document_service import (
     link_document_to_application,
     get_application_documents,
@@ -138,5 +140,23 @@ def get_application_deficiencies_api(
         )
 
     return result
+
+
+@router.get("/{application_id}/payment-status", response_model=PaymentStatusResponse)
+@router.get("/{application_id}/payment-status/", response_model=PaymentStatusResponse, include_in_schema=False)
+def get_payment_status_api(
+    application_id: str,
+    db: Session = Depends(get_db)
+):
+    result = get_payment_status(db, application_id)
+
+    if result == "APPLICATION_NOT_FOUND":
+        raise HTTPException(
+            status_code=404,
+            detail="Application not found"
+        )
+
+    return result
+
 
 

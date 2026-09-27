@@ -8,6 +8,7 @@ from app.services.application_service import (
     get_application_status,
     get_application_deficiencies,
 )
+from app.services.payment_service import get_payment_status
 from app.services.eligibility_service import check_eligibility
 from app.seed import DEMO_STUDENT_ID, DEMO_SCHOLARSHIPS
 
@@ -18,6 +19,7 @@ UUID_REGEX = re.compile(
 DEFAULT_SUGGESTIONS = [
     "Check my application status",
     "What documents are missing?",
+    "What is my payment status?",
     "Am I eligible?",
 ]
 
@@ -32,6 +34,7 @@ def detect_intent(message: str, explicit_intent: str | None = None) -> str:
         if normalized in {
             "APPLICATION_STATUS",
             "APPLICATION_DEFICIENCIES",
+            "PAYMENT_STATUS",
             "ELIGIBILITY",
             "UNKNOWN",
         }:
@@ -39,7 +42,7 @@ def detect_intent(message: str, explicit_intent: str | None = None) -> str:
 
     text = message.lower().strip()
 
-    # 1. Deficiencies & document problems check (prioritized over general status)
+    # 1. Deficiencies & document problems check
     deficiency_keywords = [
         "deficienc",
         "missing",
@@ -57,7 +60,22 @@ def detect_intent(message: str, explicit_intent: str | None = None) -> str:
     if any(kw in text for kw in deficiency_keywords):
         return "APPLICATION_DEFICIENCIES"
 
-    # 2. Application status & tracking
+    # 2. Payment & DBT status check (checked before general status)
+    payment_keywords = [
+        "payment",
+        "disburs",
+        "dbt",
+        "scholarship amount",
+        "money",
+        "funds",
+        "pfms",
+        "bank transfer",
+        "stipend",
+    ]
+    if any(kw in text for kw in payment_keywords):
+        return "PAYMENT_STATUS"
+
+    # 3. Application status & tracking
     status_keywords = [
         "status",
         "track",
@@ -70,7 +88,7 @@ def detect_intent(message: str, explicit_intent: str | None = None) -> str:
     if any(kw in text for kw in status_keywords):
         return "APPLICATION_STATUS"
 
-    # 3. Eligibility assessment
+    # 4. Eligibility assessment
     eligibility_keywords = [
         "eligible",
         "eligibility",
@@ -225,6 +243,43 @@ def process_jago_message(
             ],
         )
 
+    elif intent == "PAYMENT_STATUS":
+        app_id = _extract_application_id(request)
+        if not app_id:
+            return JagoMessageResponse(
+                conversation_id=conversation_id,
+                intent=intent,
+                message="Please provide your Application ID to check your DBT disbursement and payment status (for example: 'What is the payment status for 00000000-0000-0000-0000-000000000020?').",
+                data={"error": "APPLICATION_ID_REQUIRED"},
+                source="jago_orchestration",
+                suggestions=["Check payment for 00000000-0000-0000-0000-000000000020"],
+            )
+
+        payment_result = get_payment_status(db, app_id)
+        if payment_result == "APPLICATION_NOT_FOUND":
+            return JagoMessageResponse(
+                conversation_id=conversation_id,
+                intent=intent,
+                message=f"No application found with ID '{app_id}'. Please check the ID and try again.",
+                data={"application_id": app_id, "found": False},
+                source="payment_service.get_payment_status",
+                suggestions=["Check my application status", "Am I eligible?"],
+            )
+
+        pay_status = payment_result.get("status", "UNKNOWN")
+        pay_msg = payment_result.get("message", "")
+        return JagoMessageResponse(
+            conversation_id=conversation_id,
+            intent=intent,
+            message=f"Your DBT payment status is '{pay_status}': {pay_msg} (Simulated prototype mode)",
+            data=payment_result,
+            source="payment_service.get_payment_status",
+            suggestions=[
+                f"Check status for {app_id}",
+                f"Check deficiencies for {app_id}",
+            ],
+        )
+
     elif intent == "ELIGIBILITY":
         student_id = _extract_student_id(request)
         scholarship_id = _extract_scholarship_id(request)
@@ -284,8 +339,9 @@ def process_jago_message(
     return JagoMessageResponse(
         conversation_id=conversation_id,
         intent="UNKNOWN",
-        message="I'm sorry, I could not determine what action you'd like to take. JAGO can assist with checking your scholarship application status, identifying missing documents or deficiencies, and assessing scheme eligibility.",
+        message="I'm sorry, I could not determine what action you'd like to take. JAGO can assist with checking your scholarship application status, identifying missing documents or deficiencies, checking DBT payment status, and assessing scheme eligibility.",
         data=None,
         source="jago_rule_engine",
         suggestions=DEFAULT_SUGGESTIONS,
     )
+

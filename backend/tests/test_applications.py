@@ -162,3 +162,20 @@ def test_get_application_deficiencies_not_found(client, seeded_db):
     assert response.json()["detail"] == "Application not found"
 
 
+def test_get_application_payment_status_success(client, seeded_db):
+    response = client.get(f"/api/v1/applications/{DEMO_APPLICATION_ID}/payment-status")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["application_id"] == DEMO_APPLICATION_ID
+    assert data["status"] in ["NOT_INITIATED", "PENDING", "PROCESSING", "SUCCESS", "FAILED"]
+    assert data["disbursement_mode"] == "MOCK_DBT"
+    assert data["evaluation_mode"] == "MOCK"
+
+
+def test_get_application_payment_status_not_found(client, seeded_db):
+    response = client.get("/api/v1/applications/non-existent-app-id/payment-status")
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Application not found"
+
+
+
