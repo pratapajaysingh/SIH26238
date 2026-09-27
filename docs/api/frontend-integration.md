@@ -353,9 +353,52 @@
     "payment_reference": null,
     "evaluation_mode": "MOCK"
   }
-
   ```
-- **NOTE ON PAYMENT:** Uses synthetic DBT status derivation based on scholarship application lifecycle state (`DRAFT`, `SUBMITTED`, `VERIFIED`, `APPROVED`, `DISBURSED`, `DEFICIENCY`). No real banking or payment gateways are touched in prototype mode.
+- **NOTE ON PAYMENT:** Uses synthetic DBT status derivation based on scholarship application lifecycle state (`DRAFT`, `SUBMITTED`, `VERIFIED`, `APPROVED`, `DISBURSED`, `DEFICIENCY`). No real banking or payment gateways are touched in prototype mode. A non-schema backwards-compatibility alias exists at `/api/v1/applications/{application_id}/payments`.
+
+### 7.6 Get Application Timeline / Tracking History
+- **METHOD:** `GET`
+- **PATH:** `/api/v1/applications/{application_id}/timeline`
+- **RESPONSE (`200 OK`):**
+  ```json
+  [
+    {
+      "id": "00000000-0000-0000-0000-000000000060",
+      "application_id": "00000000-0000-0000-0000-000000000020",
+      "status": "DRAFT",
+      "message": "Application drafted by student",
+      "created_at": "2026-09-20T10:00:00",
+      "timestamp": "2026-09-20T10:00:00"
+    }
+  ]
+  ```
+- **STATUS VOCABULARY:** `DRAFT`, `SUBMITTED`, `IN_VERIFICATION`, `DEFICIENCY`, `SANCTIONED`, `REJECTED`, `WITHDRAWN`, `COMPLETED`
+- **COMMON ERRORS:**
+  - `404 Not Found`: `{"detail": "Application not found"}`
+
+### 7.7 Execute Application Status Transition
+- **METHOD:** `POST`
+- **PATH:** `/api/v1/applications/{application_id}/transition`
+- **REQUEST:**
+  ```json
+  {
+    "status": "SUBMITTED",
+    "message": "Submitted by applicant"
+  }
+  ```
+- **RESPONSE (`200 OK`):**
+  ```json
+  {
+    "id": "00000000-0000-0000-0000-000000000020",
+    "status": "SUBMITTED",
+    "previous_status": "DRAFT",
+    "message": "Submitted by applicant"
+  }
+  ```
+- **COMMON ERRORS:**
+  - `400 Bad Request`: `{"detail": "Invalid status '...'..."}`
+  - `400 Bad Request`: `{"detail": "Cannot transition application from '<current>' to '<target>'. Allowed next states: [...]"}`
+  - `404 Not Found`: `{"detail": "Application not found"}`
 
 ---
 
@@ -493,3 +536,30 @@ When the database is seeded (`python -m app.seed`), the following deterministic 
 | **Documents** | `00000000-0000-0000-0000-000000000030` (`MOCK_ST_CERTIFICATE`)<br>`00000000-0000-0000-0000-000000000031` (`TEST_VERIFIED`)<br>`00000000-0000-0000-0000-000000000032` (`TEST_MISMATCH`) | Document linking & deterministic verification demos |
 | **Verification Record** | `00000000-0000-0000-0000-000000000040`<br>Status: `PENDING` | Ready for execution |
 | **Notifications** | `00000000-0000-0000-0000-000000000050` (Read)<br>`00000000-0000-0000-0000-000000000051` (Unread)<br>`00000000-0000-0000-0000-000000000052` (Unread) | Demo notifications for `GET /api/v1/notifications/me` |
+| **Application Timeline** | `00000000-0000-0000-0000-000000000060`<br>Status: `DRAFT` | Initial tracking event for `GET /api/v1/applications/{id}/timeline` |
+
+---
+
+## 12. Government Integrations & Adapter Boundaries
+
+The TribalSetu prototype architecture defines clean adapter interfaces and deterministic mock implementations under `app.integrations`:
+
+| Subsystem | Interface | Mock Adapter | Role in TribalSetu Architecture |
+| :--- | :--- | :--- | :--- |
+| **DigiLocker** | `DigiLockerAdapter` | `MockDigiLockerAdapter` | Student document issuance & asset importing |
+| **Verification** | `MockVerificationAdapter` | `MockVerificationAdapter` | Deterministic attribute matching & integrity checks |
+| **NSP** | `NSPAdapter` | `MockNSPAdapter` | National Scholarship Portal registration & de-duplication check |
+| **SFMP / PFMS** | `SFMPAdapter` | `MockSFMPAdapter` | Direct Benefit Transfer (DBT) disbursement status tracking |
+| **NOS** | `NOSAdapter` | `MockNOSAdapter` | National Overseas Scholarship university & visa clearance |
+| **APAAR / ABC** | `APAARAdapter` | `MockAPAARAdapter` | Automated Permanent Academic Account Registry verification |
+| **UDISE+** | `UDISEAdapter` | `MockUDISEAdapter` | Pre-matric school & residential tribal school verification |
+| **AISHE** | `AISHEAdapter` | `MockAISHEAdapter` | Post-matric higher education institution validation |
+| **UIDAI** | `UIDAIAdapter` | `MockUIDAIAdapter` | Aadhaar demographic validation & name matching |
+| **State e-District**| `StateEDistrictAdapter` | `MockStateEDistrictAdapter` | State-level ST caste, income, and domicile certificate checks |
+| **UGC / NTA** | `UGCNTAAdapter` | `MockUGCNTAAdapter` | Entrance exam percentile and merit score verification |
+
+> [!IMPORTANT]
+> **Prototype Limitation Note:**
+> All adapters in the prototype operate in mock/evaluation mode (`evaluation_mode: "MOCK"`).
+> No real government APIs are called, and no production credentials are stored or requested.
+> Live government integrations require formal administrative onboarding, signed MoU agreements, and authorized API gateway credentials.

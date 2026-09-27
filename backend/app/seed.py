@@ -1,4 +1,5 @@
 import argparse
+from datetime import datetime
 import sys
 from sqlalchemy.orm import Session
 from app.core.database import SessionLocal, engine, Base
@@ -12,6 +13,7 @@ from app.models.application_document import ApplicationDocument
 from app.models.verification_record import VerificationRecord
 from app.models.manual_review import ManualReview
 from app.models.notification import Notification
+from app.models.application_timeline import ApplicationTimeline
 
 # Deterministic Demo IDs (UUID v4 format)
 DEMO_USER_ID = "00000000-0000-0000-0000-000000000001"
@@ -98,6 +100,16 @@ DEMO_NOTIFICATIONS = [
     },
 ]
 
+DEMO_TIMELINE_EVENTS = [
+    {
+        "id": "00000000-0000-0000-0000-000000000060",
+        "application_id": DEMO_APPLICATION_ID,
+        "status": "DRAFT",
+        "message": "Application drafted by student",
+        "created_at": datetime(2026, 9, 20, 10, 0, 0),
+    },
+]
+
 
 def seed_database(db: Session, reset: bool = False) -> dict:
     """Idempotently seed deterministic demo/synthetic data for frontend and local integration.
@@ -107,6 +119,7 @@ def seed_database(db: Session, reset: bool = False) -> dict:
     if reset:
         # Delete child records first in dependency order
         db.query(Notification).filter(Notification.id.like("00000000-0000-0000-0000-%")).delete(synchronize_session=False)
+        db.query(ApplicationTimeline).filter(ApplicationTimeline.id.like("00000000-0000-0000-0000-%")).delete(synchronize_session=False)
         db.query(ManualReview).filter(ManualReview.id.like("00000000-0000-0000-0000-%")).delete(synchronize_session=False)
         db.query(VerificationRecord).filter(VerificationRecord.id.like("00000000-0000-0000-0000-%")).delete(synchronize_session=False)
         db.query(ApplicationDocument).filter(ApplicationDocument.application_id == DEMO_APPLICATION_ID).delete(synchronize_session=False)
@@ -127,6 +140,7 @@ def seed_database(db: Session, reset: bool = False) -> dict:
         "application_documents": 0,
         "verification_records": 0,
         "notifications": 0,
+        "application_timeline": 0,
     }
 
     # 1. User
@@ -260,6 +274,25 @@ def seed_database(db: Session, reset: bool = False) -> dict:
             db.add(notif)
             db.flush()
             created_counts["notifications"] += 1
+
+    # 9. Application Timeline
+    for t_data in DEMO_TIMELINE_EVENTS:
+        timeline_entry = (
+            db.query(ApplicationTimeline)
+            .filter(ApplicationTimeline.id == t_data["id"])
+            .first()
+        )
+        if not timeline_entry:
+            timeline_entry = ApplicationTimeline(
+                id=t_data["id"],
+                application_id=t_data["application_id"],
+                status=t_data["status"],
+                message=t_data["message"],
+                created_at=t_data["created_at"],
+            )
+            db.add(timeline_entry)
+            db.flush()
+            created_counts["application_timeline"] += 1
 
     db.commit()
     return created_counts

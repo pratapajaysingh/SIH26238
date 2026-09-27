@@ -1,5 +1,6 @@
 from sqlalchemy.orm import Session
 from app.models.application import Application
+from app.models.application_timeline import ApplicationTimeline
 from app.schemas.application import ApplicationCreate
 from app.repositories.application_repository import (
     create_application as repo_create_application,
@@ -7,7 +8,12 @@ from app.repositories.application_repository import (
     get_application_by_id,
     get_applications_by_student_id,
     get_student_by_id,
-    get_scholarship_by_id
+    get_scholarship_by_id,
+    update_application_status as repo_update_application_status,
+)
+from app.repositories.application_timeline_repository import (
+    create_timeline_entry as repo_create_timeline_entry,
+    get_timeline_by_application_id as repo_get_timeline_by_application_id,
 )
 
 from app.repositories.verification_repository import (
@@ -22,6 +28,28 @@ from app.repositories.application_document_repository import (
 from app.repositories.manual_review_repository import (
     get_manual_review_by_verification_id,
 )
+
+ALLOWED_APPLICATION_STATUSES = {
+    "DRAFT",
+    "SUBMITTED",
+    "IN_VERIFICATION",
+    "DEFICIENCY",
+    "SANCTIONED",
+    "REJECTED",
+    "WITHDRAWN",
+    "COMPLETED",
+}
+
+VALID_STATUS_TRANSITIONS: dict[str, set[str]] = {
+    "DRAFT": {"SUBMITTED", "WITHDRAWN"},
+    "SUBMITTED": {"IN_VERIFICATION", "DEFICIENCY", "REJECTED", "WITHDRAWN"},
+    "IN_VERIFICATION": {"DEFICIENCY", "SANCTIONED", "REJECTED", "WITHDRAWN"},
+    "DEFICIENCY": {"IN_VERIFICATION", "SUBMITTED", "REJECTED", "WITHDRAWN"},
+    "SANCTIONED": {"COMPLETED", "REJECTED"},
+    "REJECTED": set(),
+    "WITHDRAWN": set(),
+    "COMPLETED": set(),
+}
 
 
 def create_application(db: Session, application: ApplicationCreate):
@@ -39,7 +67,17 @@ def create_application(db: Session, application: ApplicationCreate):
         status="DRAFT"
     )
 
-    return repo_create_application(db, new_application)
+    created = repo_create_application(db, new_application)
+
+    # Automatically record initial DRAFT timeline event
+    initial_timeline = ApplicationTimeline(
+        application_id=created.id,
+        status="DRAFT",
+        message="Application initialized in DRAFT status",
+    )
+    repo_create_timeline_entry(db, initial_timeline)
+
+    return created
 
 
 def list_applications(db: Session):
@@ -176,4 +214,88 @@ def get_application_deficiencies(db: Session, application_id: str):
         })
 
     return deficiencies
+
+
+def get_application_timeline(db: Session, application_id: str):
+    """Retrieve ordered status history / timeline events for an application."""
+    application = get_application_by_id(db, application_id)
+    if not application:
+        return "APPLICATION_NOT_FOUND"
+
+    return repo_get_timeline_by_application_id(db, application_id)
+
+
+def add_application_timeline_entry(
+    db: Session,
+    application_id: str,
+    status: str,
+    message: str | None = None,
+):
+    """Append a new status transition / timeline event to an existing application."""
+    application = get_application_by_id(db, application_id)
+    if not application:
+        return "APPLICATION_NOT_FOUND"
+
+    if status not in ALLOWED_APPLICATION_STATUSES:
+        raise ValueError(
+            f"Invalid application status '{status}'. Must be one of: {', '.join(sorted(ALLOWED_APPLICATION_STATUSES))}"
+        )
+
+    entry = ApplicationTimeline(
+        application_id=application_id,
+        status=status,
+        message=message,
+    )
+    return repo_create_timeline_entry(db, entry)
+
+
+def transition_application_status(
+    db: Session,
+    application_id: str,
+    target_status: str,
+    message: str | None = None,
+):
+    """Execute a validated lifecycle state transition for an application.
+
+    Validates:
+    1. Application exists.
+    2. Target status is in ALLOWED_APPLICATION_STATUSES.
+    3. Transition from current_status to target_status is permitted in VALID_STATUS_TRANSITIONS.
+
+    Upon validation, atomically:
+    1. Updates Application.status.
+    2. Creates a chronological ApplicationTimeline record.
+    """
+    application = get_application_by_id(db, application_id)
+    if not application:
+        return "APPLICATION_NOT_FOUND"
+
+    normalized_status = target_status.strip().upper() if isinstance(target_status, str) else target_status
+    if normalized_status not in ALLOWED_APPLICATION_STATUSES:
+        return "INVALID_STATUS"
+
+    current_status = application.status
+    allowed_transitions = VALID_STATUS_TRANSITIONS.get(current_status, set())
+    if normalized_status not in allowed_transitions:
+        return "INVALID_TRANSITION"
+
+    transition_msg = message or f"Application transitioned from {current_status} to {normalized_status}"
+
+    # Atomic update and timeline recording
+    application.status = normalized_status
+    timeline_entry = ApplicationTimeline(
+        application_id=application.id,
+        status=normalized_status,
+        message=transition_msg,
+    )
+    db.add(timeline_entry)
+    db.commit()
+    db.refresh(application)
+
+    return {
+        "id": application.id,
+        "status": application.status,
+        "previous_status": current_status,
+        "message": transition_msg,
+    }
 
