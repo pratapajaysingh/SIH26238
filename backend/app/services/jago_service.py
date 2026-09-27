@@ -10,6 +10,9 @@ from app.services.application_service import (
 )
 from app.services.payment_service import get_payment_status
 from app.services.eligibility_service import check_eligibility
+from app.models.user import User
+from app.models.student import Student
+from app.models.application import Application
 from app.seed import DEMO_STUDENT_ID, DEMO_SCHOLARSHIPS
 
 UUID_REGEX = re.compile(
@@ -103,7 +106,11 @@ def detect_intent(message: str, explicit_intent: str | None = None) -> str:
     return "UNKNOWN"
 
 
-def _extract_application_id(request: JagoMessageRequest) -> str | None:
+def _extract_application_id(
+    request: JagoMessageRequest,
+    current_user: User | None = None,
+    db: Session | None = None,
+) -> str | None:
     if request.application_id and request.application_id.strip():
         return request.application_id.strip()
 
@@ -116,10 +123,26 @@ def _extract_application_id(request: JagoMessageRequest) -> str | None:
     if matches:
         return matches[0]
 
+    # Contextual user resolution: If authenticated, resolve student's application
+    if current_user and db:
+        student = db.query(Student).filter(Student.user_id == current_user.id).first()
+        if student:
+            user_apps = (
+                db.query(Application)
+                .filter(Application.student_id == student.id)
+                .all()
+            )
+            if user_apps:
+                return user_apps[-1].id
+
     return None
 
 
-def _extract_student_id(request: JagoMessageRequest) -> str:
+def _extract_student_id(
+    request: JagoMessageRequest,
+    current_user: User | None = None,
+    db: Session | None = None,
+) -> str:
     if request.student_id and request.student_id.strip():
         return request.student_id.strip()
 
@@ -127,6 +150,12 @@ def _extract_student_id(request: JagoMessageRequest) -> str:
         ctx_sid = request.context.get("student_id")
         if ctx_sid and str(ctx_sid).strip():
             return str(ctx_sid).strip()
+
+    # Contextual user resolution: If authenticated, resolve student record
+    if current_user and db:
+        student = db.query(Student).filter(Student.user_id == current_user.id).first()
+        if student:
+            return student.id
 
     matches = UUID_REGEX.findall(request.message)
     if len(matches) >= 2:
@@ -155,6 +184,7 @@ def process_jago_message(
     db: Session,
     conversation_id: str,
     request: JagoMessageRequest,
+    current_user: User | None = None,
 ) -> JagoMessageResponse:
     """Orchestrates JAGO interactions by invoking approved domain services.
     
@@ -163,7 +193,7 @@ def process_jago_message(
     intent = detect_intent(request.message, request.intent)
 
     if intent == "APPLICATION_STATUS":
-        app_id = _extract_application_id(request)
+        app_id = _extract_application_id(request, current_user=current_user, db=db)
         if not app_id:
             return JagoMessageResponse(
                 conversation_id=conversation_id,
@@ -199,7 +229,7 @@ def process_jago_message(
         )
 
     elif intent == "APPLICATION_DEFICIENCIES":
-        app_id = _extract_application_id(request)
+        app_id = _extract_application_id(request, current_user=current_user, db=db)
         if not app_id:
             return JagoMessageResponse(
                 conversation_id=conversation_id,
@@ -244,7 +274,7 @@ def process_jago_message(
         )
 
     elif intent == "PAYMENT_STATUS":
-        app_id = _extract_application_id(request)
+        app_id = _extract_application_id(request, current_user=current_user, db=db)
         if not app_id:
             return JagoMessageResponse(
                 conversation_id=conversation_id,
@@ -254,6 +284,7 @@ def process_jago_message(
                 source="jago_orchestration",
                 suggestions=["Check payment for 00000000-0000-0000-0000-000000000020"],
             )
+
 
         payment_result = get_payment_status(db, app_id)
         if payment_result == "APPLICATION_NOT_FOUND":
@@ -281,8 +312,9 @@ def process_jago_message(
         )
 
     elif intent == "ELIGIBILITY":
-        student_id = _extract_student_id(request)
+        student_id = _extract_student_id(request, current_user=current_user, db=db)
         scholarship_id = _extract_scholarship_id(request)
+
 
         eligibility_req = EligibilityCheckRequest(
             student_id=student_id,

@@ -1,7 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.core.dependencies import get_db
+from app.core.dependencies import get_current_user, get_current_user_optional, get_db
+from app.models.student import Student
+from app.models.user import User
 from app.schemas.notification import NotificationCreate, NotificationResponse
 from app.services.notification_service import (
     create_notification,
@@ -12,13 +14,36 @@ from app.services.notification_service import (
 router = APIRouter(tags=["Notifications"])
 
 
+@router.get("/notifications/me", response_model=list[NotificationResponse])
+@router.get("/notifications/me/", response_model=list[NotificationResponse], include_in_schema=False)
+def get_my_notifications_api(
+    unread_only: bool = False,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Retrieve notifications belonging to the currently authenticated student."""
+    student = db.query(Student).filter(Student.user_id == current_user.id).first()
+    if not student:
+        return []
+    return list_notifications(db, student_id=student.id, unread_only=unread_only)
+
+
 @router.get("/notifications", response_model=list[NotificationResponse])
 @router.get("/notifications/", response_model=list[NotificationResponse], include_in_schema=False)
 def get_notifications_api(
     student_id: str | None = None,
     unread_only: bool = False,
+    current_user: User | None = Depends(get_current_user_optional),
     db: Session = Depends(get_db),
 ):
+    # Contextual resolution: If student_id is not explicitly provided but user is authenticated
+    if student_id is None and current_user is not None:
+        student = db.query(Student).filter(Student.user_id == current_user.id).first()
+        if student:
+            student_id = student.id
+        else:
+            return []
+
     result = list_notifications(db, student_id=student_id, unread_only=unread_only)
     if result == "STUDENT_NOT_FOUND":
         raise HTTPException(
@@ -26,6 +51,7 @@ def get_notifications_api(
             detail="Student not found",
         )
     return result
+
 
 
 @router.get("/students/{student_id}/notifications", response_model=list[NotificationResponse])

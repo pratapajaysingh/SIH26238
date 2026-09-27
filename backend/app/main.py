@@ -4,6 +4,7 @@ from sqlalchemy import text
 
 from app.core.config import get_cors_origins
 from app.core.database import engine
+from app.api.auth import router as auth_router
 from app.api.student import router as student_router
 from app.api.user import router as user_router
 from app.api.scholarship import router as scholarship_router
@@ -28,6 +29,7 @@ app.add_middleware(
 )
 
 # Core API routes
+app.include_router(auth_router, prefix="/api/v1")
 app.include_router(student_router, prefix="/api/v1")
 app.include_router(user_router, prefix="/api/v1")
 app.include_router(scholarship_router, prefix="/api/v1")
@@ -39,6 +41,7 @@ app.include_router(manual_review_router, prefix="/api/v1")
 app.include_router(digilocker_router, prefix="/api/v1")
 app.include_router(jago_router, prefix="/api/v1")
 app.include_router(notification_router, prefix="/api/v1")
+
 
 
 @app.get("/")

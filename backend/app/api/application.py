@@ -1,7 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from app.core.dependencies import get_db
+from app.core.dependencies import get_db, get_current_user
+from app.models.user import User
+from app.models.student import Student
+from app.models.application import Application
 from app.schemas.application import (
     ApplicationCreate,
     ApplicationResponse,
@@ -24,6 +27,19 @@ from app.services.application_document_service import (
 )
 
 router = APIRouter(prefix="/applications", tags=["Applications"])
+
+
+@router.get("/me", response_model=list[ApplicationResponse])
+@router.get("/me/", response_model=list[ApplicationResponse], include_in_schema=False)
+def get_my_applications_api(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Retrieve all applications belonging to the currently authenticated student."""
+    student = db.query(Student).filter(Student.user_id == current_user.id).first()
+    if not student:
+        return []
+    return db.query(Application).filter(Application.student_id == student.id).all()
 
 
 @router.post("", response_model=ApplicationResponse)
@@ -53,6 +69,7 @@ def create_application_api(
 @router.get("/", response_model=list[ApplicationResponse], include_in_schema=False)
 def list_applications_api(db: Session = Depends(get_db)):
     return list_applications(db)
+
 
 
 @router.post("/{application_id}/documents", response_model=ApplicationDocumentResponse)
