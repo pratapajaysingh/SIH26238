@@ -2,10 +2,20 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.core.dependencies import get_db
-from app.schemas.application import ApplicationCreate, ApplicationResponse
+from app.schemas.application import (
+    ApplicationCreate,
+    ApplicationResponse,
+    ApplicationStatusResponse,
+    ApplicationDeficiencyResponse,
+)
 from app.schemas.application_document import ApplicationDocumentCreate, ApplicationDocumentResponse
 from app.schemas.document import DocumentResponse
-from app.services.application_service import create_application, list_applications
+from app.services.application_service import (
+    create_application,
+    list_applications,
+    get_application_status,
+    get_application_deficiencies,
+)
 from app.services.application_document_service import (
     link_document_to_application,
     get_application_documents,
@@ -94,3 +104,39 @@ def list_application_documents_api(
         )
 
     return result
+
+
+@router.get("/{application_id}/status", response_model=ApplicationStatusResponse)
+@router.get("/{application_id}/status/", response_model=ApplicationStatusResponse, include_in_schema=False)
+def get_application_status_api(
+    application_id: str,
+    db: Session = Depends(get_db)
+):
+    result = get_application_status(db, application_id)
+
+    if result == "APPLICATION_NOT_FOUND":
+        raise HTTPException(
+            status_code=404,
+            detail="Application not found"
+        )
+
+    return result
+
+
+@router.get("/{application_id}/deficiencies", response_model=list[ApplicationDeficiencyResponse])
+@router.get("/{application_id}/deficiencies/", response_model=list[ApplicationDeficiencyResponse], include_in_schema=False)
+def get_application_deficiencies_api(
+    application_id: str,
+    db: Session = Depends(get_db)
+):
+    result = get_application_deficiencies(db, application_id)
+
+    if result == "APPLICATION_NOT_FOUND":
+        raise HTTPException(
+            status_code=404,
+            detail="Application not found"
+        )
+
+    return result
+
+
