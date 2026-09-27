@@ -13,6 +13,7 @@ from app.api.eligibility import router as eligibility_router
 from app.api.verification import router as verification_router
 from app.api.manual_review import router as manual_review_router
 from app.api.digilocker import router as digilocker_router
+from app.api.jago import router as jago_router
 
 app = FastAPI(title="TribalSetu API")
 
@@ -35,6 +36,7 @@ app.include_router(eligibility_router, prefix="/api/v1")
 app.include_router(verification_router, prefix="/api/v1")
 app.include_router(manual_review_router, prefix="/api/v1")
 app.include_router(digilocker_router, prefix="/api/v1")
+app.include_router(jago_router, prefix="/api/v1")
 
 
 @app.get("/")
