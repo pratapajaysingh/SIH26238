@@ -1,4 +1,4 @@
-# frontend
+# tribalsetu
 
 A new Flutter project.
 
