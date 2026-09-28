@@ -1,30 +1,36 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-
-import 'package:frontend/main.dart';
+import 'package:tribalsetu/core/enums/role_enum.dart';
+import 'package:tribalsetu/features/auth/controllers/auth_controller.dart';
+import 'package:tribalsetu/main.dart';
+import 'package:tribalsetu/repositories/mock_auth_repository.dart';
+import 'package:tribalsetu/routing/app_router.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  testWidgets('TribalSetu Login Screen renders all required components faithfully', (WidgetTester tester) async {
+    final mockRepo = MockAuthRepository();
+    final authController = AuthController(authRepository: mockRepo);
+    final appRouter = AppRouter(authController: authController);
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    await tester.pumpWidget(TribalSetuApp(appRouter: appRouter));
+    await tester.pumpAndSettle();
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
+    // Verify Roles
+    expect(find.text('Student'), findsOneWidget);
+    expect(find.text('Admin'), findsOneWidget);
+    expect(find.text('Institute'), findsOneWidget);
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    // Verify Login Methods
+    expect(find.text('Mobile Number'), findsOneWidget);
+    expect(find.text('Aadhaar'), findsOneWidget);
+
+    // Verify Action Cards
+    expect(find.text('Continue with DigiLocker'), findsOneWidget);
+    expect(find.text('Continue with APAAR'), findsOneWidget);
+
+    // Verify Bottom Motto
+    expect(find.text('Education  •  Opportunity  •  Empowerment'), findsOneWidget);
+
+    // Verify Default Selection
+    expect(authController.selectedRole, UserRole.student);
   });
 }
