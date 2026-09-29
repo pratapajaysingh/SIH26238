@@ -12,6 +12,7 @@ abstract class JagoRepository {
   Future<JagoResponse> sendMessage({
     required String conversationId,
     required String message,
+    String? language,
   });
 
   /// Fetches conversation messages history.

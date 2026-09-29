@@ -18,10 +18,17 @@ class ApiJagoRepository implements JagoRepository {
   Future<JagoResponse> sendMessage({
     required String conversationId,
     required String message,
+    String? language,
   }) async {
+    final body = <String, dynamic>{
+      'message': message,
+      if (language != null && language.isNotEmpty)
+        'context': {'language': language},
+    };
+
     final response = await apiClient.post<JagoResponse>(
       ApiConstants.jagoMessages(conversationId),
-      body: {'message': message},
+      body: body,
       fromJson: (json) {
         debugPrint('[JAGO_API] Raw response json: $json');
         if (json is Map<String, dynamic>) {

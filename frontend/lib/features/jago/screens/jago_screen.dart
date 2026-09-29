@@ -146,6 +146,59 @@ class _JagoScreenState extends State<JagoScreen> {
                         // Meet JAGO Section
                         const JagoIntroHeader(),
 
+                        const SizedBox(height: 12),
+
+                        // Language Selector Pill (English / हिन्दी / Hinglish)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                          child: Container(
+                            padding: const EdgeInsets.all(3.5),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF1F3F5),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: const Color(0xFFE5E7EB), width: 0.8),
+                            ),
+                            child: Row(
+                              children: JagoController.supportedLanguages.map((lang) {
+                                final isSelected = _controller.currentLanguage == lang['code'];
+                                return Expanded(
+                                  child: GestureDetector(
+                                    key: Key('lang_switch_${lang['code']}'),
+                                    onTap: () => _controller.setLanguage(lang['code']!),
+                                    child: AnimatedContainer(
+                                      duration: const Duration(milliseconds: 200),
+                                      padding: const EdgeInsets.symmetric(vertical: 6.5),
+                                      decoration: BoxDecoration(
+                                        color: isSelected ? const Color(0xFF111827) : Colors.transparent,
+                                        borderRadius: BorderRadius.circular(7.5),
+                                        boxShadow: isSelected
+                                            ? [
+                                                BoxShadow(
+                                                  color: Colors.black.withValues(alpha: 0.08),
+                                                  blurRadius: 4,
+                                                  offset: const Offset(0, 2),
+                                                ),
+                                              ]
+                                            : null,
+                                      ),
+                                      alignment: Alignment.center,
+                                      child: Text(
+                                        lang['name']!,
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                                          color: isSelected ? Colors.white : const Color(0xFF4B5563),
+                                          letterSpacing: -0.1,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              }).toList(),
+                            ),
+                          ),
+                        ),
+
                         const SizedBox(height: 14),
 
                         // Benefits Strip (3 Items)
@@ -240,7 +293,7 @@ class _JagoScreenState extends State<JagoScreen> {
 
                         // Suggestion Chips (Horizontal)
                         JagoSuggestionChips(
-                          chips: JagoController.suggestionChips,
+                          chips: _controller.localizedSuggestionChips,
                           onChipSelected: (prompt) => _controller.sendMessage(prompt),
                         ),
 
@@ -248,7 +301,7 @@ class _JagoScreenState extends State<JagoScreen> {
 
                         // "You can also ask about" Section (6 Cards)
                         JagoAskAboutSection(
-                          options: JagoController.askAboutOptions,
+                          options: _controller.localizedAskAboutOptions,
                           onPromptSelected: (prompt) => _controller.sendMessage(prompt),
                         ),
 

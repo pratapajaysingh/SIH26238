@@ -54,6 +54,7 @@ class MockJagoRepository implements JagoRepository {
   Future<JagoResponse> sendMessage({
     required String conversationId,
     required String message,
+    String? language,
   }) async {
     await Future.delayed(latency);
 

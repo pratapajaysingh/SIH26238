@@ -22,6 +22,7 @@ class MockJagoRepoForTest implements JagoRepository {
   Future<JagoResponse> sendMessage({
     required String conversationId,
     required String message,
+    String? language,
   }) async {
     // 1. Simulate ApiClient / ApiResponse
     final apiResponse = ApiResponse<JagoResponse>.fromJson(
@@ -215,6 +216,42 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.textContaining('I could not determine what action'), findsOneWidget);
+    });
+
+    testWidgets('Widget Test: Tapping Hindi language switch updates suggestions and sends Hindi message', (tester) async {
+      const rawJsonString = '''{
+        "conversation_id": "conv-test-HI",
+        "intent": "APPLICATION_STATUS",
+        "message": "आपकी छात्रवृत्ति आवेदन (00000000-0000-0000-0000-000000000020) की वर्तमान स्थिति 'DRAFT' है।",
+        "data": {"id": "00000000-0000-0000-0000-000000000020", "status": "DRAFT"},
+        "source": "application_service.get_application_status",
+        "suggestions": ["मेरे आवेदन की स्थिति जांचें"],
+        "language": "hi"
+      }''';
+
+      final decoded = jsonDecode(rawJsonString);
+      final repo = MockJagoRepoForTest(decoded as Map<String, dynamic>);
+      final controller = JagoController(jagoRepository: repo);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: JagoScreen(controller: controller),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Tap on Hindi language switch
+      await tester.tap(find.byKey(const Key('lang_switch_hi')));
+      await tester.pumpAndSettle();
+
+      expect(controller.currentLanguage, equals('hi'));
+      expect(find.text('मेरे आवेदन की स्थिति जांचें'), findsWidgets);
+
+      // Tap Hindi suggestion
+      await tester.tap(find.text('मेरे आवेदन की स्थिति जांचें').first);
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('आपकी छात्रवृत्ति आवेदन'), findsOneWidget);
     });
   });
 }

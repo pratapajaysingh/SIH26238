@@ -24,7 +24,11 @@ class FailingJagoRepository implements JagoRepository {
   Future<List<JagoMessage>> getConversationMessages(String conversationId) async => [];
 
   @override
-  Future<JagoResponse> sendMessage({required String conversationId, required String message}) async {
+  Future<JagoResponse> sendMessage({
+    required String conversationId,
+    required String message,
+    String? language,
+  }) async {
     if (shouldFail) {
       throw Exception('Network error');
     }
