@@ -15,6 +15,8 @@ class Scholarship {
   final String statusBadge;
   final bool isMostRelevant;
   final String deadline;
+  final String source;
+  final String lastUpdated;
 
   const Scholarship({
     required this.id,
@@ -31,6 +33,8 @@ class Scholarship {
     this.targetAudience = 'ST Students',
     this.statusBadge = 'Ongoing',
     this.isMostRelevant = false,
+    this.source = 'Ministry of Tribal Affairs',
+    this.lastUpdated = '2026-04-01',
   });
 
   factory Scholarship.fromJson(Map<String, dynamic> json) {
@@ -49,6 +53,8 @@ class Scholarship {
       targetAudience: json['target_audience'] as String? ?? 'ST Students',
       statusBadge: json['status_badge'] as String? ?? 'Ongoing',
       isMostRelevant: json['is_most_relevant'] as bool? ?? false,
+      source: json['source'] as String? ?? 'Ministry of Tribal Affairs',
+      lastUpdated: json['last_updated'] as String? ?? '2026-04-01',
     );
   }
 
@@ -68,6 +74,8 @@ class Scholarship {
       'target_audience': targetAudience,
       'status_badge': statusBadge,
       'is_most_relevant': isMostRelevant,
+      'source': source,
+      'last_updated': lastUpdated,
     };
   }
 }

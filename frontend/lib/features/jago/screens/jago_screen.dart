@@ -196,6 +196,23 @@ class _JagoScreenState extends State<JagoScreen> {
                                       style: const TextStyle(fontSize: 11.5, color: Color(0xFF991B1B)),
                                     ),
                                   ),
+                                  if (_controller.lastSentMessage != null)
+                                    TextButton(
+                                      key: const Key('jago_retry_button'),
+                                      onPressed: _controller.retryLastMessage,
+                                      style: TextButton.styleFrom(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                                        minimumSize: const Size(50, 28),
+                                      ),
+                                      child: const Text(
+                                        'Retry',
+                                        style: TextStyle(
+                                          fontSize: 11.5,
+                                          color: Color(0xFFDC2626),
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
                                   IconButton(
                                     icon: const Icon(Icons.close, size: 16, color: Color(0xFF991B1B)),
                                     onPressed: _controller.clearError,
@@ -224,13 +241,7 @@ class _JagoScreenState extends State<JagoScreen> {
                         // Suggestion Chips (Horizontal)
                         JagoSuggestionChips(
                           chips: JagoController.suggestionChips,
-                          onChipSelected: (prompt) {
-                            if (prompt == 'Am I eligible?') {
-                              Navigator.of(context).pushNamed('/eligibility');
-                            } else {
-                              _controller.sendMessage(prompt);
-                            }
-                          },
+                          onChipSelected: (prompt) => _controller.sendMessage(prompt),
                         ),
 
                         const SizedBox(height: 18),

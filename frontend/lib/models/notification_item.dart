@@ -48,7 +48,7 @@ class NotificationItem {
     return NotificationItem(
       id: json['id'] as String,
       userId: json['user_id'] as String?,
-      type: json['type'] as String? ?? 'APPLICATION_UPDATE',
+      type: (json['type'] ?? json['notification_type'] ?? json['category']) as String? ?? 'APPLICATION_UPDATE',
       title: json['title'] as String,
       message: json['message'] as String,
       applicationId: json['application_id'] as String?,

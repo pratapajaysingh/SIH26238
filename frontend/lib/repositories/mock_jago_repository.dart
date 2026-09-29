@@ -61,7 +61,22 @@ class MockJagoRepository implements JagoRepository {
     String answer;
     List<String> sources = ['mota_guidelines'];
 
-    if (queryLower.contains('post matric') || queryLower.contains('post-matric')) {
+    if (queryLower.contains('payment') || queryLower.contains('dbt') || queryLower.contains('paisa')) {
+      answer =
+          'DBT Payment Status:\n\n'
+          '• Disbursement Mode: Direct Benefit Transfer (DBT) via PFMS\n'
+          '• Bank Account: Aadhaar-seeded account verified\n'
+          '• Current Status: Processed / In Transit to Beneficiary\n'
+          '• Note: Official DBT updates are routed via PFMS gateway.';
+      sources = ['payment_service', 'pfms_adapter'];
+    } else if (queryLower.contains('deficienc') || queryLower.contains('missing') || queryLower.contains('pending')) {
+      answer =
+          'Application Deficiency & Missing Documents Check:\n\n'
+          '• Total Deficiencies Found: 0\n'
+          '• Status: All required documents (ST Certificate, Income Certificate, Marksheet) are verified.\n'
+          '• If your application is pending at Institute or District level, please allow 3-5 working days for verification.';
+      sources = ['application_service', 'verification_checklist'];
+    } else if (queryLower.contains('post matric') || queryLower.contains('post-matric')) {
       answer =
           'Post Matric Scholarship for ST Students:\n\n'
           '• Coverage: Higher education from Class 11 to Post-Doctoral studies.\n'

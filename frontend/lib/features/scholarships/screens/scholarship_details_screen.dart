@@ -372,6 +372,8 @@ class _ScholarshipDetailsScreenState extends State<ScholarshipDetailsScreen> {
               if (scheme.deadline.isNotEmpty)
                 _buildMetricItem(Icons.calendar_today_outlined, 'Application Deadline', scheme.deadline),
               _buildMetricItem(Icons.cloud_outlined, 'Source Portal', scheme.sourcePortal),
+              _buildMetricItem(Icons.verified_user_outlined, 'Source', scheme.source),
+              _buildMetricItem(Icons.update_outlined, 'Last Updated', scheme.lastUpdated),
             ],
           ),
         ],

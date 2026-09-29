@@ -16,9 +16,12 @@ class JagoController extends ChangeNotifier {
   List<JagoMessage> _messages = [];
 
   static const List<String> suggestionChips = [
-    'Tell me about Post Matric',
-    'Am I eligible?',
-    'What documents are required?',
+    'My application status',
+    'Why is my application pending?',
+    'What documents are missing?',
+    'Check my payment status',
+    'Am I eligible for NFST?',
+    'What scholarship schemes are available?',
   ];
 
   static const List<Map<String, String>> askAboutOptions = [
@@ -86,10 +89,16 @@ class JagoController extends ChangeNotifier {
     }
   }
 
+  String? _lastSentMessage;
+
+  String? get lastSentMessage => _lastSentMessage;
+
   /// Sends a message into the conversation
   Future<void> sendMessage(String text) async {
     final trimmed = text.trim();
     if (trimmed.isEmpty || _isSending) return;
+
+    _lastSentMessage = trimmed;
 
     // 1. Optimistically append user message
     final userMsg = JagoMessage.user(
@@ -121,6 +130,16 @@ class JagoController extends ChangeNotifier {
     } finally {
       _isSending = false;
       notifyListeners();
+    }
+  }
+
+  /// Retries the last attempted message
+  Future<void> retryLastMessage() async {
+    if (_lastSentMessage != null && !_isSending) {
+      final retryText = _lastSentMessage!;
+      _errorMessage = null;
+      notifyListeners();
+      await sendMessage(retryText);
     }
   }
 

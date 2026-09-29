@@ -24,3 +24,5 @@ class JagoMessageResponse(BaseModel):
     data: Any | None = None
     source: str | None = None
     suggestions: list[str] = Field(default_factory=list)
+    language: str = Field(default="en", description="Response language code (en/hi)")
+

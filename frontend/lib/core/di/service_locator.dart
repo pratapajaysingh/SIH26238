@@ -48,10 +48,12 @@ class ServiceLocator {
   static ServiceLocator get instance => _instance;
 
   // ── CONFIGURATION ─────────────────────────────────────────
-  static const bool _envUseMock = bool.fromEnvironment(
-    'USE_MOCK',
-    defaultValue: true,
-  );
+  static const bool _hasExplicitUseMock = bool.hasEnvironment('USE_MOCK');
+  static const bool _hasExplicitApiBaseUrl = bool.hasEnvironment('API_BASE_URL');
+
+  static const bool _envUseMock = _hasExplicitUseMock
+      ? bool.fromEnvironment('USE_MOCK')
+      : (_hasExplicitApiBaseUrl ? false : true);
 
   static bool _overrideUseMock = _envUseMock;
 

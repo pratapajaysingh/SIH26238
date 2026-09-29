@@ -16,6 +16,7 @@ from app.api.manual_review import router as manual_review_router
 from app.api.digilocker import router as digilocker_router
 from app.api.jago import router as jago_router
 from app.api.notification import router as notification_router
+from app.api.analytics import router as analytics_router
 
 app = FastAPI(title="TribalSetu API")
 
@@ -41,6 +42,7 @@ app.include_router(manual_review_router, prefix="/api/v1")
 app.include_router(digilocker_router, prefix="/api/v1")
 app.include_router(jago_router, prefix="/api/v1")
 app.include_router(notification_router, prefix="/api/v1")
+app.include_router(analytics_router, prefix="/api/v1")
 
 
 
@@ -86,3 +88,15 @@ def db_test(response: Response):
     except Exception:
         response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
         return {"status": "error", "database": "disconnected"}
+
+
+@app.get("/api/v1/health")
+def api_v1_health():
+    return {"status": "ok"}
+
+
+if __name__ == "__main__":
+    import uvicorn
+    from app.core.config import HOST, PORT
+
+    uvicorn.run("app.main:app", host=HOST, port=PORT, reload=False)

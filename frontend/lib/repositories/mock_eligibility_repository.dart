@@ -37,7 +37,7 @@ class MockEligibilityRepository implements EligibilityRepository {
         schemeCode = 'TOP_CLASS';
         break;
       case 'scheme-nfst-03':
-        schemeCode = 'NATIONAL_FELLOWSHIP';
+        schemeCode = 'NATIONAL_FELLOWSHIP_ST';
         break;
       case 'scheme-pre-matric-04':
         schemeCode = 'PRE_MATRIC';

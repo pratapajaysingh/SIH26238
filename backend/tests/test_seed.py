@@ -6,7 +6,7 @@ from app.models.scholarship import Scholarship
 def test_seed_database_idempotent(db_session):
     # First seed
     res1 = seed_database(db_session, reset=False)
-    assert res1["users"] >= 1
+    assert res1["users"] >= 2
     assert res1["scholarships"] >= 1
 
     # Second seed without reset should insert 0 new records
@@ -17,5 +17,5 @@ def test_seed_database_idempotent(db_session):
 
     # Reset seed
     res3 = seed_database(db_session, reset=True)
-    assert res3["users"] == 1
-    assert res3["scholarships"] == 4
+    assert res3["users"] == 4
+    assert res3["scholarships"] == 5
