@@ -1,5 +1,12 @@
-from fastapi import FastAPI, Response, status
+import logging
+import os
+from pathlib import Path
+import sys
+from contextlib import asynccontextmanager
+
+from fastapi import FastAPI, Request, Response, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from sqlalchemy import text
 
 from app.core.config import get_cors_origins
@@ -18,7 +25,81 @@ from app.api.jago import router as jago_router
 from app.api.notification import router as notification_router
 from app.api.analytics import router as analytics_router
 
-app = FastAPI(title="TribalSetu API")
+logger = logging.getLogger("tribalsetu")
+
+
+def init_db_schema(force: bool = False) -> None:
+    """Ensure database schema is up-to-date and seed data is present on startup."""
+    # Skip during automated test execution unless forced
+    if not force and ("pytest" in sys.modules or os.getenv("TESTING") == "1"):
+        return
+
+    app_dir = Path(__file__).resolve().parent.parent
+    if str(app_dir) not in sys.path:
+        sys.path.insert(0, str(app_dir))
+
+    # 1. Run migrations / create tables
+    try:
+        from alembic.config import Config
+        from alembic import command
+
+        ini_candidates = [
+            app_dir / "alembic.ini",
+            Path.cwd() / "alembic.ini",
+            Path.cwd() / "backend" / "alembic.ini",
+        ]
+        alembic_run = False
+        for ini_path in ini_candidates:
+            if ini_path.is_file():
+                alembic_cfg = Config(str(ini_path))
+                alembic_cfg.set_main_option("script_location", str(ini_path.parent / "alembic"))
+                command.upgrade(alembic_cfg, "head")
+                logger.info(f"Database migrations applied successfully via {ini_path}")
+                alembic_run = True
+                break
+
+        if not alembic_run:
+            from app.core.database import Base
+            import app.models  # noqa: F401
+            Base.metadata.create_all(bind=engine)
+            logger.info("Database tables created via Base.metadata.create_all")
+    except Exception as exc:
+        logger.warning(f"Alembic auto-migration notice: {exc}; ensuring tables with create_all fallback")
+        try:
+            from app.core.database import Base
+            import app.models  # noqa: F401
+            Base.metadata.create_all(bind=engine)
+            logger.info("Database tables ensured via Base.metadata.create_all fallback")
+        except Exception as e2:
+            logger.error(f"Schema creation error: {e2}")
+
+    # 2. Seed database idempotently (creates demo users, scholarships, apps if missing)
+    try:
+        from app.core.database import SessionLocal
+        from app.seed import seed_database
+
+        db = SessionLocal()
+        try:
+            results = seed_database(db, reset=False)
+            logger.info(f"Database seeded successfully: {results}")
+        finally:
+            db.close()
+    except Exception as exc:
+        logger.error(f"Database auto-seed notice: {exc}")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup tasks
+    try:
+        init_db_schema()
+    except Exception as exc:
+        logger.error(f"Error initializing database on startup: {exc}")
+    yield
+    # Shutdown tasks
+
+
+app = FastAPI(title="TribalSetu API", lifespan=lifespan)
 
 # Safe CORS configuration for development
 app.add_middleware(
@@ -28,6 +109,16 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    logger.error(f"Unhandled error on {request.method} {request.url.path}: {exc}", exc_info=True)
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Internal server error", "message": str(exc)},
+    )
+
 
 # Core API routes
 app.include_router(auth_router, prefix="/api/v1")
@@ -43,7 +134,6 @@ app.include_router(digilocker_router, prefix="/api/v1")
 app.include_router(jago_router, prefix="/api/v1")
 app.include_router(notification_router, prefix="/api/v1")
 app.include_router(analytics_router, prefix="/api/v1")
-
 
 
 @app.get("/")
@@ -93,6 +183,38 @@ def db_test(response: Response):
 @app.get("/api/v1/health")
 def api_v1_health():
     return {"status": "ok"}
+
+
+@app.get("/api/v1/health/tables")
+def health_tables():
+    from sqlalchemy import inspect
+    inspector = inspect(engine)
+    tables = inspector.get_table_names()
+    return {
+        "status": "ok",
+        "tables_count": len(tables),
+        "tables": tables,
+    }
+
+
+@app.post("/api/v1/admin/init-db")
+def admin_init_db():
+    try:
+        init_db_schema(force=True)
+        from sqlalchemy import inspect
+        inspector = inspect(engine)
+        tables = inspector.get_table_names()
+        return {
+            "status": "ok",
+            "message": "Database schema and seed initialized successfully",
+            "tables_count": len(tables),
+            "tables": tables,
+        }
+    except Exception as exc:
+        return JSONResponse(
+            status_code=500,
+            content={"status": "error", "message": str(exc)},
+        )
 
 
 if __name__ == "__main__":
