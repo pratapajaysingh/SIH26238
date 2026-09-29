@@ -16,7 +16,35 @@ class JagoResponse {
   });
 
   factory JagoResponse.fromJson(Map<String, dynamic> json) {
-    final rawAnswer = (json['message'] ?? json['answer'] ?? '').toString();
+    // 1. Check direct message/answer/content fields
+    String rawAnswer = (
+      json['message'] ??
+      json['answer'] ??
+      json['response'] ??
+      json['reply'] ??
+      json['content'] ??
+      json['text'] ??
+      ''
+    ).toString().trim();
+
+    // 2. If empty and nested data is a map, inspect inner message or status
+    if (rawAnswer.isEmpty && json['data'] is Map) {
+      final inner = json['data'] as Map;
+      rawAnswer = (
+        inner['message'] ??
+        inner['answer'] ??
+        inner['response'] ??
+        inner['reply'] ??
+        inner['content'] ??
+        inner['text'] ??
+        ''
+      ).toString().trim();
+
+      if (rawAnswer.isEmpty && inner.containsKey('status')) {
+        rawAnswer = 'Your scholarship application status is ${inner['status']}.';
+      }
+    }
+
     final rawSources = json['sources'] != null
         ? (json['sources'] as List<dynamic>).map((e) => e.toString()).toList()
         : (json['source'] != null ? [json['source'].toString()] : const <String>[]);
@@ -25,13 +53,22 @@ class JagoResponse {
             .toList() ??
         const <String>[];
 
+    Map<String, dynamic>? dataMap;
+    if (json['data'] is Map<String, dynamic>) {
+      dataMap = json['data'] as Map<String, dynamic>;
+    } else if (json['data'] is Map) {
+      dataMap = Map<String, dynamic>.from(json['data'] as Map);
+    } else if (json['data'] != null) {
+      dataMap = {'items': json['data']};
+    }
+
     return JagoResponse(
       answer: rawAnswer,
       sources: rawSources,
       action: json['action'] as String?,
       suggestions: rawSuggestions,
       intent: json['intent'] as String?,
-      data: json['data'] as Map<String, dynamic>?,
+      data: dataMap,
     );
   }
 
@@ -73,10 +110,14 @@ class JagoMessage {
     required JagoResponse response,
     DateTime? timestamp,
   }) {
+    final text = response.answer.trim().isNotEmpty
+        ? response.answer.trim()
+        : 'I have received your request and processed the information.';
+
     return JagoMessage(
       id: id,
       role: 'assistant',
-      content: response.answer,
+      content: text,
       timestamp: timestamp ?? DateTime.now(),
       sources: response.sources,
       action: response.action,

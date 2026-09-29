@@ -123,10 +123,12 @@ class JagoController extends ChangeNotifier {
         response: response,
         timestamp: DateTime.now(),
       );
+
+      debugPrint('[JAGO_CONTROLLER] Appending assistant message: "${asstMsg.content}" (id: ${asstMsg.id})');
       _messages.add(asstMsg);
     } catch (e) {
       _errorMessage = 'Failed to get answer from JAGO. Please try again.';
-      debugPrint('Error sending message to JAGO: $e');
+      debugPrint('[JAGO_CONTROLLER] Error sending message to JAGO: $e');
     } finally {
       _isSending = false;
       notifyListeners();

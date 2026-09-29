@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import '../core/constants/api_constants.dart';
 import '../core/network/api_client.dart';
 import '../core/network/api_exceptions.dart';
@@ -21,11 +22,26 @@ class ApiJagoRepository implements JagoRepository {
     final response = await apiClient.post<JagoResponse>(
       ApiConstants.jagoMessages(conversationId),
       body: {'message': message},
-      fromJson: (json) => JagoResponse.fromJson(json as Map<String, dynamic>),
+      fromJson: (json) {
+        debugPrint('[JAGO_API] Raw response json: $json');
+        if (json is Map<String, dynamic>) {
+          final parsed = JagoResponse.fromJson(json);
+          debugPrint('[JAGO_API] Parsed JagoResponse answer: "${parsed.answer}"');
+          return parsed;
+        } else if (json is Map) {
+          final parsed = JagoResponse.fromJson(Map<String, dynamic>.from(json));
+          debugPrint('[JAGO_API] Parsed JagoResponse from generic map answer: "${parsed.answer}"');
+          return parsed;
+        }
+        final parsed = JagoResponse(answer: json.toString());
+        debugPrint('[JAGO_API] Parsed JagoResponse fallback string: "${parsed.answer}"');
+        return parsed;
+      },
     );
 
     if (response.success && response.data != null) {
       final res = response.data!;
+      debugPrint('[JAGO_API] Final resolved assistant answer: "${res.answer}"');
       // Record interaction locally in conversation history
       _inMemoryHistory.putIfAbsent(conversationId, () => []);
       _inMemoryHistory[conversationId]!.add(

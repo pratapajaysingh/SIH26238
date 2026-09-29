@@ -152,7 +152,9 @@ class JagoChatBubble extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      message.content,
+                      message.content.trim().isNotEmpty
+                          ? message.content
+                          : 'I have received your request and processed the details.',
                       style: const TextStyle(
                         fontSize: 12.5,
                         fontWeight: FontWeight.w400,

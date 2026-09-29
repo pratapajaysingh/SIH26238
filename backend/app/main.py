@@ -197,6 +197,18 @@ def health_tables():
     }
 
 
+@app.get("/api/v1/health/jago")
+def health_jago():
+    from app.services.jago_llm_service import JagoLLMService, GENAI_AVAILABLE
+    llm = JagoLLMService()
+    return {
+        "status": "ok",
+        "llm_configured": llm.is_configured(),
+        "genai_available": GENAI_AVAILABLE,
+        "model": llm.model_name,
+    }
+
+
 @app.post("/api/v1/admin/init-db")
 def admin_init_db():
     try:

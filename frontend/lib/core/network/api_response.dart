@@ -17,17 +17,16 @@ class ApiResponse<T> {
     dynamic json,
     T Function(dynamic json)? fromJsonT,
   ) {
-    if (json is Map<String, dynamic>) {
-      final bool hasExplicitSuccess = json.containsKey('success');
-      final bool success = hasExplicitSuccess ? (json['success'] as bool? ?? false) : true;
+    if (json is Map) {
+      final map = Map<String, dynamic>.from(json);
+      final bool hasExplicitSuccess = map.containsKey('success');
+      final bool success = hasExplicitSuccess ? (map['success'] as bool? ?? false) : true;
 
       dynamic rawData;
-      if (json.containsKey('data')) {
-        rawData = json['data'];
-      } else if (!hasExplicitSuccess) {
-        rawData = json;
+      if (hasExplicitSuccess && map.containsKey('data')) {
+        rawData = map['data'];
       } else {
-        rawData = null;
+        rawData = map;
       }
 
       final T? parsedData = rawData != null && fromJsonT != null
@@ -37,8 +36,8 @@ class ApiResponse<T> {
       return ApiResponse<T>(
         success: success,
         data: parsedData,
-        message: json['message'] as String? ?? json['detail'] as String? ?? '',
-        requestId: json['request_id'] as String?,
+        message: map['message'] as String? ?? map['detail'] as String? ?? '',
+        requestId: map['request_id'] as String?,
       );
     } else {
       // Direct JSON List or primitive value
