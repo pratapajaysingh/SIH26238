@@ -4,26 +4,34 @@ import '../constants/api_constants.dart';
 import 'api_exceptions.dart';
 import 'api_response.dart';
 
-/// ApiClient abstracts HTTP network operations conforming to the documented architecture.
+/// ApiClient abstracts HTTP network operations conforming to the backend API.
 class ApiClient {
   final http.Client _client;
   final String _baseUrl;
   String? _authToken;
 
-  ApiClient({http.Client? client, String? baseUrl})
-      : _client = client ?? http.Client(),
+  /// Optional callback invoked when a 401 Unauthorized status is returned.
+  void Function()? onUnauthorized;
+
+  ApiClient({
+    http.Client? client,
+    String? baseUrl,
+    this.onUnauthorized,
+  })  : _client = client ?? http.Client(),
         _baseUrl = baseUrl ?? ApiConstants.baseUrl;
 
   void setAuthToken(String? token) {
     _authToken = token;
   }
 
+  String? get authToken => _authToken;
+
   Map<String, String> _buildHeaders([Map<String, String>? extraHeaders]) {
     final headers = <String, String>{
       'Content-Type': 'application/json',
       'Accept': 'application/json',
     };
-    if (_authToken != null) {
+    if (_authToken != null && _authToken!.isNotEmpty) {
       headers['Authorization'] = 'Bearer $_authToken';
     }
     if (extraHeaders != null) {
@@ -51,7 +59,7 @@ class ApiClient {
 
   Future<ApiResponse<T>> post<T>(
     String path, {
-    Map<String, dynamic>? body,
+    dynamic body,
     Map<String, String>? headers,
     T Function(dynamic json)? fromJson,
   }) async {
@@ -70,7 +78,7 @@ class ApiClient {
 
   Future<ApiResponse<T>> patch<T>(
     String path, {
-    Map<String, dynamic>? body,
+    dynamic body,
     Map<String, String>? headers,
     T Function(dynamic json)? fromJson,
   }) async {
@@ -89,7 +97,7 @@ class ApiClient {
 
   Future<ApiResponse<T>> put<T>(
     String path, {
-    Map<String, dynamic>? body,
+    dynamic body,
     Map<String, String>? headers,
     T Function(dynamic json)? fromJson,
   }) async {
@@ -124,29 +132,66 @@ class ApiClient {
   }
 
   ApiResponse<T> _handleResponse<T>(http.Response response, T Function(dynamic json)? fromJson) {
-    final Map<String, dynamic> body;
-    try {
-      body = jsonDecode(response.body) as Map<String, dynamic>;
-    } catch (_) {
-      throw ApiException(
-        'Invalid response format from server',
+    dynamic decodedBody;
+    if (response.body.isNotEmpty) {
+      try {
+        decodedBody = jsonDecode(response.body);
+      } catch (_) {
+        throw ApiException(
+          'Invalid response format from server',
+          statusCode: response.statusCode,
+        );
+      }
+    }
+
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      if (decodedBody == null) {
+        return const ApiResponse(success: true, message: 'Success', data: null);
+      }
+      return ApiResponse<T>.fromJson(decodedBody, fromJson);
+    }
+
+    // 401 Unauthorized handling
+    if (response.statusCode == 401) {
+      _authToken = null;
+      if (onUnauthorized != null) {
+        try {
+          onUnauthorized!();
+        } catch (_) {}
+      }
+
+      String message = 'Unauthorized access';
+      if (decodedBody is Map) {
+        message = decodedBody['detail']?.toString() ??
+            decodedBody['message']?.toString() ??
+            message;
+      }
+      throw AuthException(
+        message,
         statusCode: response.statusCode,
       );
     }
 
-    if (response.statusCode >= 200 && response.statusCode < 300) {
-      return ApiResponse.fromJson(body, fromJson);
-    } else if (response.statusCode == 401) {
-      throw AuthException(
-        body['message'] ?? 'Unauthorized access',
-        statusCode: response.statusCode,
-      );
-    } else {
-      throw ApiException(
-        body['message'] ?? 'API request failed',
-        statusCode: response.statusCode,
-      );
+    // Other error statuses
+    String errorMessage = 'API request failed';
+    if (decodedBody is Map) {
+      final detail = decodedBody['detail'];
+      if (detail is List) {
+        // FastAPI validation errors: [{"loc": [...], "msg": "..."}]
+        errorMessage = detail
+            .map((item) => item is Map && item['msg'] != null ? item['msg'].toString() : item.toString())
+            .join('; ');
+      } else if (detail != null) {
+        errorMessage = detail.toString();
+      } else if (decodedBody['message'] != null) {
+        errorMessage = decodedBody['message'].toString();
+      }
     }
+
+    throw ApiException(
+      errorMessage,
+      statusCode: response.statusCode,
+    );
   }
 
   Exception _handleError(dynamic error) {

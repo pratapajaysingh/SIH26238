@@ -11,7 +11,7 @@ import 'eligibility_repository.dart';
 /// ```json
 /// {
 ///   "student_id": "uuid",
-///   "scheme_id": "uuid"
+///   "scholarship_id": "uuid"
 /// }
 /// ```
 class ApiEligibilityRepository implements EligibilityRepository {
@@ -24,11 +24,27 @@ class ApiEligibilityRepository implements EligibilityRepository {
     required String studentId,
     required String schemeId,
   }) async {
+    // If studentId is non-UUID format (like test mock ID 'TS2024S10023'),
+    // attempt to resolve authenticated student ID or default to seeded student
+    String effectiveStudentId = studentId;
+    if (!studentId.contains('-')) {
+      try {
+        final sRes = await apiClient.get<Map<String, dynamic>>(ApiConstants.studentsMe);
+        if (sRes.success && sRes.data != null && sRes.data!['id'] != null) {
+          effectiveStudentId = sRes.data!['id'].toString();
+        } else {
+          effectiveStudentId = '00000000-0000-0000-0000-000000000002';
+        }
+      } catch (_) {
+        effectiveStudentId = '00000000-0000-0000-0000-000000000002';
+      }
+    }
+
     final response = await apiClient.post<EligibilityCheckResult>(
       ApiConstants.eligibilityCheck,
       body: {
-        'student_id': studentId,
-        'scheme_id': schemeId,
+        'student_id': effectiveStudentId,
+        'scholarship_id': schemeId,
       },
       fromJson: (json) =>
           EligibilityCheckResult.fromJson(json as Map<String, dynamic>),

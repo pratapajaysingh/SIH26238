@@ -4,6 +4,7 @@ import '../../../core/enums/payment_status.dart';
 import '../../../core/utils/date_formatter.dart';
 import '../../../models/application.dart';
 import '../../../models/application_timeline.dart';
+import '../../../models/deficiency.dart';
 import '../../../models/document.dart';
 import '../../../models/payment.dart';
 import '../../../models/verification.dart';
@@ -58,6 +59,7 @@ class ApplicationDetailsController extends ChangeNotifier {
   List<VerificationRecord> _verifications = [];
   List<PaymentRecord> _payments = [];
   List<DocumentItem> _documents = [];
+  List<ApplicationDeficiency> _deficiencies = [];
   ApplicationDetailsTab _selectedTab = ApplicationDetailsTab.overview;
   bool _isLoading = false;
   String? _errorMessage;
@@ -68,6 +70,7 @@ class ApplicationDetailsController extends ChangeNotifier {
   List<VerificationRecord> get verifications => _verifications;
   List<PaymentRecord> get payments => _payments;
   List<DocumentItem> get documents => _documents;
+  List<ApplicationDeficiency> get deficiencies => _deficiencies;
   ApplicationDetailsTab get selectedTab => _selectedTab;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
@@ -111,12 +114,15 @@ class ApplicationDetailsController extends ChangeNotifier {
         _paymentRepository.getApplicationPayments(_applicationId).catchError((_) => <PaymentRecord>[]),
         // Documents: GET /api/v1/documents
         _documentRepository.getDocuments().catchError((_) => <DocumentItem>[]),
+        // Deficiencies: GET /api/v1/applications/{id}/deficiencies
+        _applicationRepository.getApplicationDeficiencies(_applicationId).catchError((_) => <ApplicationDeficiency>[]),
       ]);
 
       _timelineEvents = results[0] as List<ApplicationTimelineEvent>;
       _verifications = results[1] as List<VerificationRecord>;
       _payments = results[2] as List<PaymentRecord>;
       _documents = results[3] as List<DocumentItem>;
+      _deficiencies = results[4] as List<ApplicationDeficiency>;
     } catch (e) {
       _errorMessage = e.toString().replaceFirst('Exception: ', '').replaceFirst('ApiException: ', '');
     } finally {

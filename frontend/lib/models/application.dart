@@ -64,16 +64,35 @@ class Application {
   }
 
   factory Application.fromJson(Map<String, dynamic> json) {
+    final rawId = (json['id'] ?? json['application_id'] ?? '').toString();
+    final rawAppNum = json['application_number'] ??
+        json['applicationNumber'] ??
+        (rawId.isNotEmpty ? 'APP-${rawId.length >= 8 ? rawId.substring(0, 8).toUpperCase() : rawId.toUpperCase()}' : 'APP-UNKNOWN');
+    final rawSchemeId = (json['scholarship_id'] ?? json['scheme_id'] ?? json['scholarshipId'] ?? '').toString();
+    final rawSchemeCode = (json['scholarship_code'] ?? json['scheme_code'] ?? 'SCHEME').toString();
+    final rawSchemeName = (json['scholarship_name'] ?? json['scheme_name'] ?? 'Scholarship Application').toString();
+    final rawStudentId = (json['student_id'] ?? '').toString();
+    final rawStatus = (json['status'] ?? 'DRAFT').toString();
+
+    DateTime parsedSubmittedAt;
+    if (json['submitted_at'] != null) {
+      parsedSubmittedAt = DateTime.tryParse(json['submitted_at'].toString()) ?? DateTime.now();
+    } else if (json['created_at'] != null) {
+      parsedSubmittedAt = DateTime.tryParse(json['created_at'].toString()) ?? DateTime.now();
+    } else {
+      parsedSubmittedAt = DateTime.now();
+    }
+
     return Application(
-      id: json['id'] as String,
-      applicationNumber: json['application_number'] as String,
-      schemeId: json['scheme_id'] as String,
-      schemeCode: json['scheme_code'] as String,
-      schemeName: json['scheme_name'] as String,
-      studentId: json['student_id'] as String,
-      status: ApplicationStatus.fromString(json['status'] as String),
-      submittedAt: DateTime.parse(json['submitted_at'] as String),
-      currentStage: json['current_stage'] as String? ?? 'Institute Verification',
+      id: rawId,
+      applicationNumber: rawAppNum.toString(),
+      schemeId: rawSchemeId,
+      schemeCode: rawSchemeCode,
+      schemeName: rawSchemeName,
+      studentId: rawStudentId,
+      status: ApplicationStatus.fromString(rawStatus),
+      submittedAt: parsedSubmittedAt,
+      currentStage: json['current_stage'] as String? ?? (json['status'] as String? ?? 'In Progress'),
       amountSanctioned: (json['amount_sanctioned'] as num?)?.toDouble(),
       remarks: json['remarks'] as String?,
       sourcePortal: json['source_portal'] as String? ?? 'NSP',

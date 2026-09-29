@@ -89,4 +89,27 @@ class MockVerificationRepository implements VerificationRepository {
       ),
     ];
   }
+
+  @override
+  Future<VerificationRecord> createVerification({
+    required String applicationId,
+    required String documentId,
+  }) async {
+    return VerificationRecord(
+      id: 'verif-mock-${DateTime.now().millisecondsSinceEpoch}',
+      applicationId: applicationId,
+      documentId: documentId,
+      status: VerificationStatus.pending,
+    );
+  }
+
+  @override
+  Future<Map<String, dynamic>> executeVerification(String verificationId) async {
+    return {
+      'verification_id': verificationId,
+      'status': 'VERIFIED',
+      'confidence': 1.0,
+      'evaluation_mode': 'MOCK',
+    };
+  }
 }

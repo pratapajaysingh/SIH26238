@@ -19,6 +19,12 @@ abstract class AuthRepository {
   /// Initiates DigiLocker consent/identity flow and returns an authenticated session.
   Future<ApiResponse<AuthSession>> loginWithDigiLocker();
 
+  /// Authenticates using email/username and password directly (e.g. POST /api/v1/auth/login).
+  Future<ApiResponse<AuthSession>> login({
+    required String usernameOrEmail,
+    required String password,
+  });
+
   /// Initiates APAAR ID identity verification and returns an authenticated session.
   Future<ApiResponse<AuthSession>> loginWithApaar(String apaarId);
 

@@ -34,33 +34,34 @@ import '../../repositories/payment_repository.dart';
 import '../../repositories/api_payment_repository.dart';
 import '../../repositories/mock_payment_repository.dart';
 
-/// ServiceLocator provides all repository instances centrally.
+/// ServiceLocator provides centralized access to all repository instances.
 ///
-/// ┌──────────────────────────────────────────────────────────┐
-/// │  TO CONNECT TO REAL BACKEND:                             │
-/// │                                                          │
-/// │  1. Change [useMock] to false                            │
-/// │  2. Set [baseUrl] to your backend URL                    │
-/// │  3. That's it. All screens automatically use real APIs.  │
-/// └──────────────────────────────────────────────────────────┘
+/// Supports seamless switching between mock mode and the real FastAPI backend via:
+/// - flutter run --dart-define=USE_MOCK=false --dart-define=API_BASE_URL=http://localhost:8000
+/// - ServiceLocator.useMockMode = false (programmatic)
 class ServiceLocator {
-  ServiceLocator._();
+  ServiceLocator._() {
+    _initApiClient();
+  }
 
   static final ServiceLocator _instance = ServiceLocator._();
   static ServiceLocator get instance => _instance;
 
   // ── CONFIGURATION ─────────────────────────────────────────
-  //
-  // Toggle this single flag to switch the ENTIRE app between
-  // mock data (for development/testing) and real API calls.
-  //
-  // Can also be overridden via --dart-define:
-  //   flutter run --dart-define=USE_MOCK=false
-  //   flutter run --dart-define=API_BASE_URL=http://192.168.1.5:8000
-  static const bool useMock = bool.fromEnvironment(
+  static const bool _envUseMock = bool.fromEnvironment(
     'USE_MOCK',
     defaultValue: true,
   );
+
+  static bool _overrideUseMock = _envUseMock;
+
+  /// Dynamic getter for mock status.
+  static bool get useMock => _overrideUseMock;
+
+  /// Allows runtime toggling between mock and real backend.
+  static set useMockMode(bool value) {
+    _overrideUseMock = value;
+  }
 
   static const String baseUrl = String.fromEnvironment(
     'API_BASE_URL',
@@ -70,57 +71,65 @@ class ServiceLocator {
   // ── SHARED API CLIENT ─────────────────────────────────────
   late final ApiClient _apiClient = ApiClient(baseUrl: baseUrl);
 
-  /// Access the shared ApiClient (e.g., to set auth token after login).
+  void _initApiClient() {
+    _apiClient.onUnauthorized = () {
+      // 401 Unauthorized handling: reset active session & bearer token
+      _apiAuthRepository.logout();
+    };
+  }
+
+  /// Access the shared ApiClient.
   ApiClient get apiClient => _apiClient;
 
-  /// Set the bearer token after successful authentication.
+  /// Set the bearer token on the shared ApiClient.
   void setAuthToken(String? token) {
     _apiClient.setAuthToken(token);
   }
 
-  // ── REPOSITORIES ──────────────────────────────────────────
+  // ── SINGLETON REPOSITORY INSTANCES ────────────────────────
+  late final MockAuthRepository _mockAuthRepository = MockAuthRepository();
+  late final ApiAuthRepository _apiAuthRepository = ApiAuthRepository(apiClient: _apiClient);
 
-  AuthRepository get authRepository => useMock
-      ? MockAuthRepository()
-      : ApiAuthRepository(apiClient: _apiClient);
+  late final MockStudentRepository _mockStudentRepository = MockStudentRepository();
+  late final ApiStudentRepository _apiStudentRepository = ApiStudentRepository(apiClient: _apiClient);
 
-  StudentRepository get studentRepository => useMock
-      ? MockStudentRepository()
-      : ApiStudentRepository(apiClient: _apiClient);
+  late final MockScholarshipRepository _mockScholarshipRepository = MockScholarshipRepository();
+  late final ApiScholarshipRepository _apiScholarshipRepository = ApiScholarshipRepository(apiClient: _apiClient);
 
-  ScholarshipRepository get scholarshipRepository => useMock
-      ? MockScholarshipRepository()
-      : ApiScholarshipRepository(apiClient: _apiClient);
+  late final MockApplicationRepository _mockApplicationRepository = MockApplicationRepository();
+  late final ApiApplicationRepository _apiApplicationRepository = ApiApplicationRepository(apiClient: _apiClient);
 
-  ApplicationRepository get applicationRepository => useMock
-      ? MockApplicationRepository()
-      : ApiApplicationRepository(apiClient: _apiClient);
+  late final MockNotificationRepository _mockNotificationRepository = MockNotificationRepository();
+  late final ApiNotificationRepository _apiNotificationRepository = ApiNotificationRepository(apiClient: _apiClient);
 
-  NotificationRepository get notificationRepository => useMock
-      ? MockNotificationRepository()
-      : ApiNotificationRepository(apiClient: _apiClient);
+  late final MockDocumentRepository _mockDocumentRepository = MockDocumentRepository();
+  late final ApiDocumentRepository _apiDocumentRepository = ApiDocumentRepository(apiClient: _apiClient);
 
-  DocumentRepository get documentRepository => useMock
-      ? MockDocumentRepository()
-      : ApiDocumentRepository(apiClient: _apiClient);
+  late final MockProfileRepository _mockProfileRepository = MockProfileRepository();
+  late final ApiProfileRepository _apiProfileRepository = ApiProfileRepository(apiClient: _apiClient);
 
-  ProfileRepository get profileRepository => useMock
-      ? MockProfileRepository()
-      : ApiProfileRepository(apiClient: _apiClient);
+  late final MockJagoRepository _mockJagoRepository = MockJagoRepository();
+  late final ApiJagoRepository _apiJagoRepository = ApiJagoRepository(apiClient: _apiClient);
 
-  JagoRepository get jagoRepository => useMock
-      ? MockJagoRepository()
-      : ApiJagoRepository(apiClient: _apiClient);
+  late final MockEligibilityRepository _mockEligibilityRepository = MockEligibilityRepository();
+  late final ApiEligibilityRepository _apiEligibilityRepository = ApiEligibilityRepository(apiClient: _apiClient);
 
-  EligibilityRepository get eligibilityRepository => useMock
-      ? MockEligibilityRepository()
-      : ApiEligibilityRepository(apiClient: _apiClient);
+  late final MockVerificationRepository _mockVerificationRepository = MockVerificationRepository();
+  late final ApiVerificationRepository _apiVerificationRepository = ApiVerificationRepository(apiClient: _apiClient);
 
-  VerificationRepository get verificationRepository => useMock
-      ? MockVerificationRepository()
-      : ApiVerificationRepository(apiClient: _apiClient);
+  late final MockPaymentRepository _mockPaymentRepository = MockPaymentRepository();
+  late final ApiPaymentRepository _apiPaymentRepository = ApiPaymentRepository(apiClient: _apiClient);
 
-  PaymentRepository get paymentRepository => useMock
-      ? MockPaymentRepository()
-      : ApiPaymentRepository(apiClient: _apiClient);
+  // ── REPOSITORY GETTERS ────────────────────────────────────
+  AuthRepository get authRepository => useMock ? _mockAuthRepository : _apiAuthRepository;
+  StudentRepository get studentRepository => useMock ? _mockStudentRepository : _apiStudentRepository;
+  ScholarshipRepository get scholarshipRepository => useMock ? _mockScholarshipRepository : _apiScholarshipRepository;
+  ApplicationRepository get applicationRepository => useMock ? _mockApplicationRepository : _apiApplicationRepository;
+  NotificationRepository get notificationRepository => useMock ? _mockNotificationRepository : _apiNotificationRepository;
+  DocumentRepository get documentRepository => useMock ? _mockDocumentRepository : _apiDocumentRepository;
+  ProfileRepository get profileRepository => useMock ? _mockProfileRepository : _apiProfileRepository;
+  JagoRepository get jagoRepository => useMock ? _mockJagoRepository : _apiJagoRepository;
+  EligibilityRepository get eligibilityRepository => useMock ? _mockEligibilityRepository : _apiEligibilityRepository;
+  VerificationRepository get verificationRepository => useMock ? _mockVerificationRepository : _apiVerificationRepository;
+  PaymentRepository get paymentRepository => useMock ? _mockPaymentRepository : _apiPaymentRepository;
 }

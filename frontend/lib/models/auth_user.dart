@@ -13,6 +13,7 @@ class AuthUser {
   final String category; // ST, PVTG
   final String state;
   final String district;
+  final String? email;
 
   const AuthUser({
     required this.id,
@@ -26,11 +27,12 @@ class AuthUser {
     this.category = 'ST',
     this.state = 'Odisha',
     this.district = 'Mayurbhanj',
+    this.email,
   });
 
   factory AuthUser.fromJson(Map<String, dynamic> json) {
     return AuthUser(
-      id: json['id'] as String,
+      id: (json['id'] ?? '').toString(),
       name: json['name'] as String? ?? 'Student Beneficiary',
       mobileNumber: json['mobile_number'] as String? ?? '',
       role: UserRole.fromString(json['role'] as String? ?? 'STUDENT'),
@@ -41,6 +43,7 @@ class AuthUser {
       category: json['category'] as String? ?? 'ST',
       state: json['state'] as String? ?? 'Odisha',
       district: json['district'] as String? ?? 'Mayurbhanj',
+      email: json['email'] as String?,
     );
   }
 
@@ -57,6 +60,7 @@ class AuthUser {
       'category': category,
       'state': state,
       'district': district,
+      if (email != null) 'email': email,
     };
   }
 }

@@ -15,11 +15,24 @@ class AuthSession {
   });
 
   factory AuthSession.fromJson(Map<String, dynamic> json) {
+    final rawToken = (json['token'] ?? json['access_token'] ?? '').toString();
+    final userMap = json['user'] is Map<String, dynamic>
+        ? json['user'] as Map<String, dynamic>
+        : (json['data'] is Map<String, dynamic> ? json['data'] as Map<String, dynamic> : json);
+
+    final issuedAt = json['issued_at'] != null
+        ? DateTime.tryParse(json['issued_at'].toString()) ?? DateTime.now()
+        : DateTime.now();
+
+    final expiresAt = json['expires_at'] != null
+        ? DateTime.tryParse(json['expires_at'].toString()) ?? DateTime.now().add(const Duration(days: 7))
+        : DateTime.now().add(const Duration(days: 7));
+
     return AuthSession(
-      token: json['token'] as String,
-      user: AuthUser.fromJson(json['user'] as Map<String, dynamic>),
-      issuedAt: DateTime.parse(json['issued_at'] as String),
-      expiresAt: DateTime.parse(json['expires_at'] as String),
+      token: rawToken,
+      user: AuthUser.fromJson(userMap),
+      issuedAt: issuedAt,
+      expiresAt: expiresAt,
     );
   }
 

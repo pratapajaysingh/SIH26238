@@ -19,6 +19,9 @@ class PaymentRecord {
   final String? maskedAccountNumber;
   final DateTime? createdAt;
   final DateTime? updatedAt;
+  final String? message;
+  final String? disbursementMode;
+  final String? evaluationMode;
 
   const PaymentRecord({
     required this.id,
@@ -36,6 +39,9 @@ class PaymentRecord {
     this.maskedAccountNumber,
     this.createdAt,
     this.updatedAt,
+    this.message,
+    this.disbursementMode,
+    this.evaluationMode,
   });
 
   // Backward-compatibility getters
@@ -45,25 +51,30 @@ class PaymentRecord {
 
   factory PaymentRecord.fromJson(Map<String, dynamic> json) {
     final rawStatus = (json['payment_status'] ?? json['status'] ?? 'PROCESSING').toString();
-    final rawDate = json['payment_date'] ?? json['transaction_date'];
-    final rawRef = json['transaction_ref'] ?? json['dbt_reference_number'];
+    final rawDate = json['payment_date'] ?? json['transaction_date'] ?? json['created_at'];
+    final rawRef = json['payment_reference'] ?? json['transaction_ref'] ?? json['dbt_reference_number'];
+    final rawId = (json['id'] ?? json['application_id'] ?? 'PAY-001').toString();
+    final rawAppId = (json['application_id'] ?? json['id'] ?? '').toString();
 
     return PaymentRecord(
-      id: json['id'] as String,
-      applicationId: json['application_id'] as String,
+      id: rawId,
+      applicationId: rawAppId,
       studentId: json['student_id'] as String?,
       schemeId: json['scheme_id'] as String?,
       schemeName: json['scheme_name'] as String? ?? 'Scholarship Grant',
       amount: (json['amount'] as num?)?.toDouble() ?? 0.0,
       status: PaymentStatus.fromString(rawStatus),
       transactionRef: rawRef as String?,
-      paymentDate: rawDate != null ? DateTime.tryParse(rawDate as String) : null,
-      sourceSystem: json['source_system'] as String?,
+      paymentDate: rawDate != null ? DateTime.tryParse(rawDate.toString()) : null,
+      sourceSystem: json['source_system'] as String? ?? json['disbursement_mode'] as String?,
       externalPaymentId: json['external_payment_id'] as String?,
       bankName: json['bank_name'] as String?,
       maskedAccountNumber: json['masked_account_number'] as String?,
-      createdAt: json['created_at'] != null ? DateTime.tryParse(json['created_at'] as String) : null,
-      updatedAt: json['updated_at'] != null ? DateTime.tryParse(json['updated_at'] as String) : null,
+      createdAt: json['created_at'] != null ? DateTime.tryParse(json['created_at'].toString()) : null,
+      updatedAt: json['updated_at'] != null ? DateTime.tryParse(json['updated_at'].toString()) : null,
+      message: json['message'] as String?,
+      disbursementMode: json['disbursement_mode'] as String?,
+      evaluationMode: json['evaluation_mode'] as String?,
     );
   }
 

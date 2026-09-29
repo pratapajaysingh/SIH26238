@@ -1,6 +1,7 @@
 import '../core/enums/application_status.dart';
 import '../models/application.dart';
 import '../models/application_timeline.dart';
+import '../models/deficiency.dart';
 import 'application_repository.dart';
 
 /// MockApplicationRepository provides deterministic application and timeline data
@@ -592,6 +593,76 @@ class MockApplicationRepository implements ApplicationRepository {
       _applicationDocumentsMap[applicationId]!.remove(documentId);
     }
     return true;
+  }
+
+  @override
+  Future<List<ApplicationDeficiency>> getApplicationDeficiencies(String applicationId) async {
+    if (latency > Duration.zero) {
+      await Future.delayed(latency);
+    }
+    // Return sample deficiency for Card 3 or seed demo application
+    if (applicationId == 'app-2024-st-03' || applicationId.contains('00000000-0000-0000-0000-000000000020')) {
+      return [
+        ApplicationDeficiency(
+          id: 'def-rec-$applicationId',
+          applicationId: applicationId,
+          deficiencyType: 'DOCUMENT_MISMATCH',
+          type: 'DOCUMENT_MISMATCH',
+          category: 'VERIFICATION',
+          documentId: 'doc-02',
+          documentName: 'ST Caste Certificate',
+          documentType: 'MOCK_ST_CERTIFICATE',
+          verificationId: 'verif-02',
+          status: 'MISMATCH',
+          severity: 'HIGH',
+          message: 'Document verification mismatch requires correction or review',
+          reason: 'Document verification mismatch requires correction or review',
+        ),
+      ];
+    }
+    return [];
+  }
+
+  @override
+  Future<Application> transitionApplicationStatus(
+    String id,
+    String status, {
+    String? message,
+  }) async {
+    if (latency > Duration.zero) {
+      await Future.delayed(latency);
+    }
+    final existing = await getApplicationById(id);
+    if (existing != null) {
+      final updated = Application(
+        id: existing.id,
+        applicationNumber: existing.applicationNumber,
+        schemeId: existing.schemeId,
+        schemeCode: existing.schemeCode,
+        schemeName: existing.schemeName,
+        studentId: existing.studentId,
+        status: ApplicationStatus.fromString(status),
+        submittedAt: existing.submittedAt,
+        currentStage: status,
+        amountSanctioned: existing.amountSanctioned,
+        remarks: message ?? existing.remarks,
+        sourcePortal: existing.sourcePortal,
+        ministryName: existing.ministryName,
+        academicYear: existing.academicYear,
+        sourceSystem: existing.sourceSystem,
+        externalAppId: existing.externalAppId,
+        lastUpdatedAt: DateTime.now(),
+        timeline: existing.timeline,
+      );
+      final idx = _dynamicApplications.indexWhere((a) => a.id == id);
+      if (idx != -1) {
+        _dynamicApplications[idx] = updated;
+      } else {
+        _dynamicApplications.add(updated);
+      }
+      return updated;
+    }
+    throw Exception('Application not found');
   }
 
   @override

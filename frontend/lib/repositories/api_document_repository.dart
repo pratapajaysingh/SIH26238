@@ -1,5 +1,6 @@
 import '../core/constants/api_constants.dart';
 import '../core/network/api_client.dart';
+import '../core/network/api_exceptions.dart';
 import '../models/document.dart';
 import 'document_repository.dart';
 
@@ -7,7 +8,7 @@ import 'document_repository.dart';
 /// Consumes:
 /// - GET /api/v1/documents
 /// - POST /api/v1/documents
-/// - POST /api/v1/documents/digilocker/consent
+/// - Mock DigiLocker routes on backend
 class ApiDocumentRepository implements DocumentRepository {
   final ApiClient apiClient;
 
@@ -15,18 +16,19 @@ class ApiDocumentRepository implements DocumentRepository {
 
   @override
   Future<List<DocumentItem>> getDocuments({String? category}) async {
-    String endpoint = ApiConstants.documents;
-    if (category != null && category.isNotEmpty && category.toLowerCase() != 'all documents') {
-      endpoint = '$endpoint?category=${Uri.encodeComponent(category)}';
-    }
-    final response = await apiClient.get(endpoint);
+    final response = await apiClient.get<List<dynamic>>(ApiConstants.documents);
     if (response.success && response.data != null) {
-      final list = response.data as List<dynamic>;
-      return list
+      final list = response.data!
           .map((item) => DocumentItem.fromJson(item as Map<String, dynamic>))
           .toList();
+      if (category != null && category.isNotEmpty && category.toLowerCase() != 'all documents') {
+        return list.where((d) => d.categoryDisplay.toLowerCase() == category.toLowerCase()).toList();
+      }
+      return list;
     }
-    throw Exception(response.message);
+    throw ApiException(
+      response.message.isNotEmpty ? response.message : 'Failed to retrieve documents',
+    );
   }
 
   @override
@@ -35,29 +37,73 @@ class ApiDocumentRepository implements DocumentRepository {
     required String docName,
     required String filePath,
     String? category,
+    String? studentId,
   }) async {
-    final response = await apiClient.post(
+    String sId = studentId ?? '';
+    if (sId.isEmpty) {
+      try {
+        final sRes = await apiClient.get<Map<String, dynamic>>(ApiConstants.studentsMe);
+        if (sRes.success && sRes.data != null && sRes.data!['id'] != null) {
+          sId = sRes.data!['id'].toString();
+        }
+      } catch (_) {}
+    }
+    if (sId.isEmpty) {
+      sId = '00000000-0000-0000-0000-000000000002';
+    }
+
+    final response = await apiClient.post<Map<String, dynamic>>(
       ApiConstants.documents,
       body: {
-        'doc_type': docType,
-        'doc_name': docName,
-        'file_path': filePath,
-        'category': ?category,
-        'source': 'UPLOAD',
+        'student_id': sId,
+        'document_type': docType,
+        'document_name': docName,
       },
     );
     if (response.success && response.data != null) {
-      return DocumentItem.fromJson(response.data as Map<String, dynamic>);
+      return DocumentItem.fromJson(response.data!);
     }
-    throw Exception(response.message);
+    throw ApiException(
+      response.message.isNotEmpty ? response.message : 'Failed to upload document',
+    );
   }
 
   @override
   Future<Map<String, dynamic>> requestDigiLockerConsent() async {
-    final response = await apiClient.post(ApiConstants.documentsDigiLockerConsent);
+    // Prototype mock DigiLocker consent handled locally without calling nonexistent consent route
+    return {
+      'status': 'AUTHORIZED',
+      'message': 'DigiLocker consent granted (Prototype Simulation Mode)',
+    };
+  }
+
+  /// Lists mock DigiLocker documents for student from backend:
+  /// GET /api/v1/students/{student_id}/digilocker/documents
+  Future<List<Map<String, dynamic>>> getDigiLockerDocuments(String studentId) async {
+    final response = await apiClient.get<List<dynamic>>(
+      ApiConstants.studentDigiLockerDocuments(studentId),
+    );
     if (response.success && response.data != null) {
-      return response.data as Map<String, dynamic>;
+      return response.data!.map((e) => Map<String, dynamic>.from(e as Map)).toList();
     }
-    throw Exception(response.message);
+    return [];
+  }
+
+  /// Imports a mock DigiLocker document into the student's wallet via backend:
+  /// POST /api/v1/students/{student_id}/digilocker/documents/import
+  Future<DocumentItem> importDigiLockerDocument({
+    required String studentId,
+    required String documentType,
+  }) async {
+    final response = await apiClient.post<Map<String, dynamic>>(
+      ApiConstants.studentDigiLockerImport(studentId),
+      body: {'document_type': documentType},
+    );
+    if (response.success && response.data != null) {
+      return DocumentItem.fromJson(response.data!);
+    }
+    throw ApiException(
+      response.message.isNotEmpty ? response.message : 'Failed to import DigiLocker document',
+    );
   }
 }

@@ -1,30 +1,37 @@
-/// JagoResponse models the documented API response from:
-/// POST /api/v1/jago/conversations/{id}/messages
-/// Response format:
-/// {
-///   "answer": "Your Post-Matric application is currently under District Verification.",
-///   "sources": ["application_status"],
-///   "action": null
-/// }
 class JagoResponse {
   final String answer;
   final List<String> sources;
   final String? action;
+  final List<String> suggestions;
+  final String? intent;
+  final Map<String, dynamic>? data;
 
   const JagoResponse({
     required this.answer,
     this.sources = const [],
     this.action,
+    this.suggestions = const [],
+    this.intent,
+    this.data,
   });
 
   factory JagoResponse.fromJson(Map<String, dynamic> json) {
+    final rawAnswer = (json['message'] ?? json['answer'] ?? '').toString();
+    final rawSources = json['sources'] != null
+        ? (json['sources'] as List<dynamic>).map((e) => e.toString()).toList()
+        : (json['source'] != null ? [json['source'].toString()] : const <String>[]);
+    final rawSuggestions = (json['suggestions'] as List<dynamic>?)
+            ?.map((e) => e.toString())
+            .toList() ??
+        const <String>[];
+
     return JagoResponse(
-      answer: json['answer'] as String? ?? '',
-      sources: (json['sources'] as List<dynamic>?)
-              ?.map((e) => e.toString())
-              .toList() ??
-          const [],
+      answer: rawAnswer,
+      sources: rawSources,
       action: json['action'] as String?,
+      suggestions: rawSuggestions,
+      intent: json['intent'] as String?,
+      data: json['data'] as Map<String, dynamic>?,
     );
   }
 
@@ -33,6 +40,9 @@ class JagoResponse {
       'answer': answer,
       'sources': sources,
       'action': action,
+      'suggestions': suggestions,
+      if (intent != null) 'intent': intent,
+      if (data != null) 'data': data,
     };
   }
 }

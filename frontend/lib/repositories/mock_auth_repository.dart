@@ -199,6 +199,44 @@ class MockAuthRepository implements AuthRepository {
   }
 
   @override
+  Future<ApiResponse<AuthSession>> login({
+    required String usernameOrEmail,
+    required String password,
+  }) async {
+    await Future.delayed(const Duration(milliseconds: 300));
+    final user = AuthUser(
+      id: '00000000-0000-0000-0000-000000000001',
+      name: 'Demo Student User',
+      mobileNumber: '9876543210',
+      role: UserRole.student,
+      maskedAadhaar: 'XXXX-XXXX-4589',
+      apaarId: 'APAAR-2026-9921',
+      isAadhaarVerified: true,
+      isPvtg: true,
+      category: 'ST',
+      state: 'Odisha',
+      district: 'Mayurbhanj',
+      email: usernameOrEmail,
+    );
+
+    final session = AuthSession(
+      token: 'jwt-mock-token-sample-${DateTime.now().millisecondsSinceEpoch}',
+      user: user,
+      issuedAt: DateTime.now(),
+      expiresAt: DateTime.now().add(const Duration(days: 30)),
+    );
+
+    _activeSession = session;
+
+    return ApiResponse<AuthSession>(
+      success: true,
+      data: session,
+      message: 'Login successful.',
+      requestId: 'req-mock-login-1',
+    );
+  }
+
+  @override
   Future<AuthSession?> getCurrentSession() async {
     return _activeSession;
   }

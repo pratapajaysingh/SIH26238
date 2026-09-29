@@ -1,5 +1,6 @@
 import '../core/constants/api_constants.dart';
 import '../core/network/api_client.dart';
+import '../core/network/api_exceptions.dart';
 import '../models/scholarship.dart';
 import 'scholarship_repository.dart';
 
@@ -11,23 +12,26 @@ class ApiScholarshipRepository implements ScholarshipRepository {
 
   @override
   Future<List<Scholarship>> getScholarships() async {
-    final response = await apiClient.get(ApiConstants.scholarships);
+    final response = await apiClient.get<List<dynamic>>(ApiConstants.scholarships);
     if (response.success && response.data != null) {
-      final list = response.data as List<dynamic>;
+      final list = response.data!;
       return list
           .map((item) => Scholarship.fromJson(item as Map<String, dynamic>))
           .toList();
     }
-    throw Exception(response.message);
+    throw ApiException(
+      response.message.isNotEmpty ? response.message : 'Failed to retrieve scholarships',
+    );
   }
 
   @override
   Future<Scholarship?> getScholarshipById(String id) async {
-    final response = await apiClient.get('${ApiConstants.scholarships}/$id');
-    if (response.success && response.data != null) {
-      return Scholarship.fromJson(response.data as Map<String, dynamic>);
+    final scholarships = await getScholarships();
+    try {
+      return scholarships.firstWhere((s) => s.id == id);
+    } catch (_) {
+      return null;
     }
-    return null;
   }
 
   @override

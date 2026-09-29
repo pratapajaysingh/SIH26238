@@ -268,6 +268,56 @@ class _ApplicationDetailsScreenState extends State<ApplicationDetailsScreen> {
       case ApplicationDetailsTab.overview:
         return Column(
           children: [
+            // Deficiencies Notice
+            if (_controller.deficiencies.isNotEmpty) ...[
+              Container(
+                margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFEF2F2),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: const Color(0xFFFECACA), width: 1.2),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.warning_amber_rounded, color: Color(0xFFDC2626), size: 22),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Action Required (${_controller.deficiencies.length} Deficienc${_controller.deficiencies.length > 1 ? "ies" : "y"})',
+                          style: const TextStyle(
+                            fontSize: 14.5,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF991B1B),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    for (final def in _controller.deficiencies)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 6.0),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('• ', style: TextStyle(color: Color(0xFFDC2626), fontWeight: FontWeight.bold)),
+                            Expanded(
+                              child: Text(
+                                '${def.documentName != null ? "${def.documentName}: " : ""}${def.message}',
+                                style: const TextStyle(fontSize: 12, color: Color(0xFF374151)),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 10),
+            ],
+
             // Verification Status Section Card
             ApplicationVerificationStatusCard(
               onViewAll: () {

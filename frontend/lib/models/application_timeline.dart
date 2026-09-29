@@ -30,15 +30,21 @@ class ApplicationTimelineEvent {
   bool get isRejected => status.toUpperCase() == 'REJECTED' || status.toUpperCase() == 'FAILED';
 
   factory ApplicationTimelineEvent.fromJson(Map<String, dynamic> json) {
+    final rawStatus = (json['status'] ?? 'PENDING').toString();
+    final rawDate = json['created_at'] ?? json['timestamp'] ?? json['date'];
+    final parsedDate = rawDate != null ? DateTime.tryParse(rawDate.toString()) : null;
+    final dateStr = json['date_formatted'] as String? ??
+        (parsedDate != null ? '${parsedDate.day.toString().padLeft(2, '0')}/${parsedDate.month.toString().padLeft(2, '0')}/${parsedDate.year}' : '-');
+
     return ApplicationTimelineEvent(
-      id: json['id'] as String,
-      applicationId: json['application_id'] as String,
-      stage: json['stage'] as String,
-      title: json['title'] as String,
-      description: json['description'] as String?,
-      status: json['status'] as String? ?? 'PENDING',
-      date: json['date'] != null ? DateTime.tryParse(json['date'] as String) : null,
-      dateFormatted: json['date_formatted'] as String? ?? '-',
+      id: (json['id'] ?? '').toString(),
+      applicationId: (json['application_id'] ?? '').toString(),
+      stage: (json['stage'] ?? json['status'] ?? 'DRAFT').toString(),
+      title: (json['title'] ?? json['message'] ?? json['status'] ?? 'Status Update').toString(),
+      description: json['description'] as String? ?? json['message'] as String?,
+      status: rawStatus,
+      date: parsedDate,
+      dateFormatted: dateStr,
       stageIndex: json['stage_index'] as int? ?? 0,
     );
   }
