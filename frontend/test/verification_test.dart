@@ -24,6 +24,19 @@ class FailingVerificationRepository implements VerificationRepository {
   Future<List<VerificationRecord>> getApplicationVerifications(String applicationId) async {
     throw Exception('Failed to connect to verification service. Please try again.');
   }
+
+  @override
+  Future<VerificationRecord> createVerification({
+    required String applicationId,
+    required String documentId,
+  }) async {
+    throw Exception('Failed to connect to verification service. Please try again.');
+  }
+
+  @override
+  Future<Map<String, dynamic>> executeVerification(String verificationId) async {
+    throw Exception('Failed to connect to verification service. Please try again.');
+  }
 }
 
 void main() {

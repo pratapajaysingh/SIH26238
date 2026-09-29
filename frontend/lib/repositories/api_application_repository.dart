@@ -161,7 +161,7 @@ class ApiApplicationRepository implements ApplicationRepository {
       ApiConstants.applicationTransition(id),
       body: {
         'status': status,
-        if (message != null) 'message': message,
+        'message': ?message,
       },
     );
 

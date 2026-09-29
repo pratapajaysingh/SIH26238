@@ -17,6 +17,7 @@ import 'package:tribalsetu/features/dashboard/widgets/custom_bottom_nav_bar.dart
 import 'package:tribalsetu/features/dashboard/widgets/dashboard_header.dart';
 import 'package:tribalsetu/models/application.dart';
 import 'package:tribalsetu/models/application_timeline.dart';
+import 'package:tribalsetu/models/deficiency.dart';
 import 'package:tribalsetu/repositories/application_repository.dart';
 import 'package:tribalsetu/repositories/mock_application_repository.dart';
 import 'package:tribalsetu/repositories/mock_document_repository.dart';
@@ -32,12 +33,22 @@ class FailingApplicationRepository implements ApplicationRepository {
   Future<List<ApplicationTimelineEvent>> getApplicationTimeline(String applicationId) async =>
       throw Exception('Network error');
   @override
+  Future<List<ApplicationDeficiency>> getApplicationDeficiencies(String applicationId) async =>
+      throw Exception('Network error');
+  @override
   Future<Application?> getApplicationById(String id) async => throw Exception('Failed to load application details');
   @override
-  Future<Application> createApplication({required String schemeId, required String academicYear}) async =>
+  Future<Application> createApplication({
+    required String schemeId,
+    required String academicYear,
+    String? studentId,
+  }) async =>
       throw Exception('Network error');
   @override
   Future<Application> updateApplication(String applicationId, Map<String, dynamic> data) async =>
+      throw Exception('Network error');
+  @override
+  Future<Application> transitionApplicationStatus(String id, String status, {String? message}) async =>
       throw Exception('Network error');
   @override
   Future<Application> submitApplication(String applicationId) async =>

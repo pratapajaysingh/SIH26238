@@ -424,6 +424,7 @@ class MockApplicationRepository implements ApplicationRepository {
   Future<Application> createApplication({
     required String schemeId,
     required String academicYear,
+    String? studentId,
   }) async {
     if (latency > Duration.zero) {
       await Future.delayed(latency);

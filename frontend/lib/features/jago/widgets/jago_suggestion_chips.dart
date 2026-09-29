@@ -20,7 +20,6 @@ class JagoSuggestionChips extends StatelessWidget {
       height: 38,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
-        cacheExtent: 500,
         padding: const EdgeInsets.symmetric(horizontal: 20.0),
         itemCount: chips.length,
         separatorBuilder: (_, _) => const SizedBox(width: 8),
