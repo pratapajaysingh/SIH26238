@@ -29,8 +29,10 @@ from app.models.user import User
 from app.models.verification_record import VerificationRecord
 from app.models.manual_review import ManualReview
 from app.models.notification import Notification
+from app.models.otp_token import OtpToken
 
 target_metadata = Base.metadata
+
 
 # other values from the config, defined by the needs of env.py,
 # can be acquired:

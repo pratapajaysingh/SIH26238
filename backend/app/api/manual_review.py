@@ -5,10 +5,11 @@ from app.core.dependencies import get_db, get_current_user_optional
 from app.models.user import User
 from app.repositories.application_repository import get_application_by_id
 from app.repositories.verification_repository import get_verification_by_id
-from app.schemas.manual_review import ManualReviewResponse
+from app.schemas.manual_review import ManualReviewResponse, ManualReviewDecisionRequest
 from app.services.manual_review_service import (
     create_manual_review,
     get_manual_reviews,
+    decide_manual_review,
 )
 from app.services.student_service import get_student_by_user
 
@@ -78,6 +79,46 @@ def create_manual_review_api(
     include_in_schema=False,
 )
 def list_manual_reviews_api(
+    current_user: User | None = Depends(get_current_user_optional),
     db: Session = Depends(get_db),
 ):
+    if current_user and getattr(current_user, "role", "STUDENT") == "STUDENT":
+        raise HTTPException(
+            status_code=403,
+            detail="Access denied: Student accounts cannot access the manual review queue",
+        )
     return get_manual_reviews(db)
+
+
+@router.post(
+    "/manual-reviews/{review_id}/decide",
+    response_model=ManualReviewResponse,
+)
+@router.post(
+    "/manual-reviews/{review_id}/decide/",
+    response_model=ManualReviewResponse,
+    include_in_schema=False,
+)
+def decide_manual_review_api(
+    review_id: str,
+    payload: ManualReviewDecisionRequest,
+    current_user: User | None = Depends(get_current_user_optional),
+    db: Session = Depends(get_db),
+):
+    if current_user and getattr(current_user, "role", "STUDENT") == "STUDENT":
+        raise HTTPException(
+            status_code=403,
+            detail="Access denied: Student accounts cannot resolve manual reviews",
+        )
+    result = decide_manual_review(db, review_id, payload.action, payload.remarks)
+    if result == "NOT_FOUND":
+        raise HTTPException(
+            status_code=404,
+            detail="Manual review record not found",
+        )
+    if result == "INVALID_ACTION":
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid action. Use APPROVE or REJECT.",
+        )
+    return result

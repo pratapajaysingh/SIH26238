@@ -8,6 +8,7 @@ from app.models.verification_record import VerificationRecord
 from app.models.manual_review import ManualReview
 from app.models.notification import Notification
 from app.models.application_timeline import ApplicationTimeline
+from app.models.otp_token import OtpToken
 
 __all__ = [
     "User",
@@ -20,6 +21,8 @@ __all__ = [
     "VerificationRecord",
     "ManualReview",
     "Notification",
+    "OtpToken",
 ]
+
 
 

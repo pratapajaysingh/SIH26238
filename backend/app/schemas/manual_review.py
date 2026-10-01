@@ -9,3 +9,8 @@ class ManualReviewResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class ManualReviewDecisionRequest(BaseModel):
+    action: str  # APPROVE or REJECT
+    remarks: str | None = None

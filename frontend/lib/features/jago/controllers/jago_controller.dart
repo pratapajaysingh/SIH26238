@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import '../../../core/services/language_service.dart';
 import '../../../models/jago_message.dart';
 import '../../../repositories/jago_repository.dart';
 
@@ -12,13 +13,16 @@ class JagoController extends ChangeNotifier {
   bool _isLoading = true;
   bool _isSending = false;
   String? _errorMessage;
-  String _currentLanguage = 'en'; // 'en', 'hi', 'hinglish'
+  String _currentLanguage = LanguageService.instance.currentLanguage;
   String _conversationId = 'conv-default';
   List<JagoMessage> _messages = [];
 
   static const List<Map<String, String>> supportedLanguages = [
     {'code': 'en', 'name': 'English'},
     {'code': 'hi', 'name': 'हिन्दी'},
+    {'code': 'sat', 'name': 'ᱥᱟᱱᱛᱟᱲᱤ'},
+    {'code': 'or', 'name': 'ଓଡ଼ିଆ'},
+    {'code': 'gon', 'name': 'गोण्डी'},
     {'code': 'hinglish', 'name': 'Hinglish'},
   ];
 
@@ -47,6 +51,33 @@ class JagoController extends ChangeNotifier {
     'Payment status check karo',
     'Kya main NFST ke liye eligible hu?',
     'Kaun si scholarship schemes available hain?',
+  ];
+
+  static const List<String> suggestionChipsSat = [
+    'ᱤᱧᱟᱜ ᱟᱵᱮᱫᱚᱱ ᱚᱵᱚᱥᱛᱟ',
+    'ᱪᱮᱫᱟᱜ ᱟᱵᱮᱫᱚᱱ ᱵᱟᱹᱠᱤ ᱢᱮᱱᱟᱜ-ᱟ?',
+    'ᱪᱮᱫ ᱠᱟᱜᱚᱡᱽ ᱠᱚᱢ ᱢᱮᱱᱟᱜ-ᱟ?',
+    'DBT ᱴᱟᱠᱟ ᱚᱵᱚᱥᱛᱟ',
+    'ᱪᱮᱫ ᱤᱧ ᱡᱚᱜᱽ ᱜᱮᱭᱟ?',
+    'ᱥᱠᱚᱞᱟᱨᱥᱤᱯ ᱡᱚᱡᱚᱱᱟ ᱠᱚ',
+  ];
+
+  static const List<String> suggestionChipsOr = [
+    'ମୋ ଆବେଦନ ସ୍ଥିତି ଯାଞ୍ଚ କରନ୍ତୁ',
+    'ମୋ ଆବେଦନ କାହିଁକି ବିଚାରାଧୀନ?',
+    'କେଉଁ ଦଲିଲଗୁଡ଼ିକ ବାକି ଅଛି?',
+    'ମୋର DBT ଦେୟ ସ୍ଥିତି',
+    'ମୁଁ କଣ ଯୋଗ୍ୟ ଅଟେ?',
+    'ଉପଲବ୍ଧ ଛାତ୍ରବୃତ୍ତି ଯୋଜନା',
+  ];
+
+  static const List<String> suggestionChipsGon = [
+    'नावा अर्जी रो हाल-चाल',
+    'नावा अर्जी बारे ते कबर',
+    'बतले कागजात पाहिजेल?',
+    'नावा DBT पयका रो हाल-चाल',
+    'पात्रता नतीजा',
+    'छात्रवृत्ति योजना',
   ];
 
   static const List<String> suggestionChips = suggestionChipsEn;
@@ -150,6 +181,72 @@ class JagoController extends ChangeNotifier {
     },
   ];
 
+  static const List<Map<String, String>> askAboutOptionsSat = [
+    {
+      'title': 'ᱥᱠᱚᱞᱟᱨᱥᱤᱯ\nᱡᱚᱡᱚᱱᱟ',
+      'prompt': 'ST ᱯᱟᱹᱴᱷᱩᱣᱟᱹ ᱠᱚ ᱞᱟᱹᱜᱤᱫ ᱪᱮᱫ ᱥᱠᱚᱞᱟᱨᱥᱤᱯ ᱢᱮᱱᱟᱜ-ᱟ?',
+      'icon': 'school',
+    },
+    {
+      'title': 'ᱯᱟᱛᱨᱚᱛᱟ\nᱢᱟᱱᱫᱚᱸᱰ',
+      'prompt': 'ᱥᱠᱚᱞᱟᱨᱥᱤᱯ ᱞᱟᱹᱜᱤᱫ ᱯᱟᱛᱨᱚᱛᱟ ᱢᱟᱱᱫᱚᱸᱰ ᱪᱮᱫ ᱠᱟᱱᱟ?',
+      'icon': 'criteria',
+    },
+    {
+      'title': 'ᱞᱟᱹᱠᱛᱤᱭᱟᱱ\nᱠᱟᱜᱚᱡᱽ',
+      'prompt': 'ᱥᱠᱚᱞᱟᱨᱥᱤᱯ ᱞᱟᱹᱜᱤᱫ ᱪᱮᱫ ᱠᱟᱜᱚᱡᱽ ᱞᱟᱹᱠᱛᱤᱜ-ᱟ?',
+      'icon': 'documents',
+    },
+    {
+      'title': 'ᱟᱵᱮᱫᱚᱱ\nᱦᱚᱨᱟ',
+      'prompt': 'TribalSetu ᱨᱮ ᱥᱠᱚᱞᱟᱨᱥᱤᱯ ᱞᱟᱹᱜᱤᱫ ᱪᱮᱞᱠᱟᱛᱮ ᱟᱵᱮᱫᱚᱱ ᱦᱩᱭᱩᱜ-ᱟ?',
+      'icon': 'process',
+    },
+    {
+      'title': 'ᱢᱩᱬᱩᱛ\nᱛᱟᱹᱨᱤᱠᱷ',
+      'prompt': 'ᱥᱠᱚᱞᱟᱨᱥᱤᱯ ᱨᱮᱱᱟᱜ ᱢᱩᱬᱩᱛ ᱛᱟᱹᱨᱤᱠᱷ ᱪᱮᱫ ᱠᱟᱱᱟ?',
+      'icon': 'deadlines',
+    },
+    {
+      'title': 'ᱥᱟᱫᱷᱟᱨᱚᱱ\nᱠᱩᱠᱞᱤ',
+      'prompt': 'JAGO ᱤᱧᱟᱜ ᱪᱮᱫ ᱜᱚᱲᱚ ᱮᱢ ᱫᱟᱲᱮᱭᱟᱜ-ᱟ?',
+      'icon': 'queries',
+    },
+  ];
+
+  static const List<Map<String, String>> askAboutOptionsOr = [
+    {
+      'title': 'ଛାତ୍ରବୃତ୍ତି\nଯୋଜନା',
+      'prompt': 'ST ଛାତ୍ରଛାତ୍ରୀଙ୍କ ପାଇଁ କେଉଁ ଛାତ୍ରବୃତ୍ତି ଉପଲବ୍ଧ?',
+      'icon': 'school',
+    },
+    {
+      'title': 'ଯୋଗ୍ୟତା\nମାନଦଣ୍ଡ',
+      'prompt': 'ଛାତ୍ରବୃତ୍ତି ପାଇଁ ଯୋଗ୍ୟତା ମାନଦଣ୍ଡ କଣ?',
+      'icon': 'criteria',
+    },
+    {
+      'title': 'ଆବଶ୍ୟକ\nଦଲିଲ',
+      'prompt': 'ଛାତ୍ରବୃତ୍ତି ଆବେଦନ ପାଇଁ କେଉଁ ଦଲିଲ ଆବଶ୍ୟକ?',
+      'icon': 'documents',
+    },
+    {
+      'title': 'ଆବେଦନ\nପ୍ରକ୍ରିୟା',
+      'prompt': 'TribalSetu ରେ ଛାତ୍ରବୃତ୍ତି ପାଇଁ କିପରି ଆବେଦନ କରିବେ?',
+      'icon': 'process',
+    },
+    {
+      'title': 'ଗୁରୁତ୍ୱପୂର୍ଣ୍ଣ\nତାରିଖ',
+      'prompt': 'ଛାତ୍ରବୃତ୍ତିର ଗୁରୁତ୍ୱପୂର୍ଣ୍ଣ ଶେଷ ତାରିଖ କଣ?',
+      'icon': 'deadlines',
+    },
+    {
+      'title': 'ସାଧାରଣ\nପ୍ରଶ୍ନ',
+      'prompt': 'JAGO ମୋତେ କିପରି ସାହାଯ୍ୟ କରିପାରିବ?',
+      'icon': 'queries',
+    },
+  ];
+
   static const List<Map<String, String>> askAboutOptions = askAboutOptionsEn;
 
   String get currentLanguage => _currentLanguage;
@@ -158,6 +255,12 @@ class JagoController extends ChangeNotifier {
     switch (_currentLanguage) {
       case 'hi':
         return suggestionChipsHi;
+      case 'sat':
+        return suggestionChipsSat;
+      case 'or':
+        return suggestionChipsOr;
+      case 'gon':
+        return suggestionChipsGon;
       case 'hinglish':
         return suggestionChipsHinglish;
       default:
@@ -169,6 +272,10 @@ class JagoController extends ChangeNotifier {
     switch (_currentLanguage) {
       case 'hi':
         return askAboutOptionsHi;
+      case 'sat':
+        return askAboutOptionsSat;
+      case 'or':
+        return askAboutOptionsOr;
       case 'hinglish':
         return askAboutOptionsHinglish;
       default:
@@ -179,6 +286,7 @@ class JagoController extends ChangeNotifier {
   void setLanguage(String lang) {
     if (_currentLanguage != lang) {
       _currentLanguage = lang;
+      LanguageService.instance.setLanguage(lang);
       notifyListeners();
     }
   }

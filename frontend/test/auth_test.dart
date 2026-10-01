@@ -1,5 +1,4 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:tribalsetu/core/enums/auth_method_enum.dart';
 import 'package:tribalsetu/core/enums/role_enum.dart';
 import 'package:tribalsetu/core/utils/validators.dart';
 import 'package:tribalsetu/features/auth/controllers/auth_controller.dart';
@@ -19,9 +18,8 @@ void main() {
       authController.dispose();
     });
 
-    test('Initial state is correct: Student role, Mobile auth method, no errors', () {
+    test('Initial state is correct: Student role, empty state, no errors', () {
       expect(authController.selectedRole, UserRole.student);
-      expect(authController.selectedMethod, AuthMethod.mobile);
       expect(authController.isLoading, false);
       expect(authController.errorMessage, isNull);
       expect(authController.isOtpSent, false);
@@ -39,57 +37,65 @@ void main() {
       expect(authController.selectedRole, UserRole.student);
     });
 
-    test('Auth method switching works properly', () {
-      authController.setAuthMethod(AuthMethod.aadhaar);
-      expect(authController.selectedMethod, AuthMethod.aadhaar);
-
-      authController.setAuthMethod(AuthMethod.mobile);
-      expect(authController.selectedMethod, AuthMethod.mobile);
+    test('Validators correctly validate email addresses', () {
+      expect(Validators.validateEmail(''), 'Please enter your email address');
+      expect(Validators.validateEmail('invalid-email'), 'Please enter a valid email address');
+      expect(Validators.validateEmail('student@'), 'Please enter a valid email address');
+      expect(Validators.validateEmail('student@example.com'), isNull);
+      expect(Validators.validateEmail('rameshwar.murmu@tribalsetu.gov.in'), isNull);
     });
 
-    test('Validators correctly validate Indian mobile numbers', () {
-      expect(Validators.validateMobile(''), 'Please enter your mobile number');
-      expect(Validators.validateMobile('12345'), 'Mobile number must be 10 digits');
-      expect(Validators.validateMobile('1234567890'), 'Please enter a valid mobile number starting with 6-9');
-      expect(Validators.validateMobile('9876543210'), isNull);
-      expect(Validators.validateMobile('8765432109'), isNull);
-      expect(Validators.validateMobile('7654321098'), isNull);
-      expect(Validators.validateMobile('6543210987'), isNull);
+    test('Validators correctly validate 6-digit OTP codes', () {
+      expect(Validators.validateOtp(''), 'Please enter the 6-digit code');
+      expect(Validators.validateOtp('123'), 'Code must be exactly 6 digits');
+      expect(Validators.validateOtp('abcdef'), 'Code must be exactly 6 digits');
+      expect(Validators.validateOtp('123456'), isNull);
     });
 
-    test('Validators correctly validate 12-digit Aadhaar numbers', () {
-      expect(Validators.validateAadhaar(''), 'Please enter your Aadhaar number');
-      expect(Validators.validateAadhaar('123'), 'Aadhaar number must be 12 digits');
-      expect(Validators.validateAadhaar('123456789012'), isNull);
-    });
+    test('Full email OTP authentication lifecycle against MockAuthRepository', () async {
+      authController.emailController.text = 'student@example.com';
+      final requestSuccess = await authController.requestOtp();
 
-    test('Full mobile OTP authentication lifecycle against MockAuthRepository', () async {
-      authController.mobileController.text = '9876543210';
-      final continueSuccess = await authController.submitContinue();
-
-      expect(continueSuccess, true);
+      expect(requestSuccess, true);
       expect(authController.isOtpSent, true);
+      expect(authController.expiresIn, 300);
       expect(authController.errorMessage, isNull);
 
       final verifySuccess = await authController.verifyOtp('123456');
       expect(verifySuccess, true);
       expect(authController.isAuthenticated, true);
-      expect(authController.session?.user.name, 'Rameshwar Murmu');
+      expect(authController.session?.user.email, 'student@example.com');
       expect(authController.session?.user.role, UserRole.student);
     });
 
-    test('DigiLocker direct integration handshake completes session', () async {
-      final success = await authController.loginWithDigiLocker();
-      expect(success, true);
+    test('MockAuthRepository rejects invalid OTP codes and only accepts 123456', () async {
+      authController.emailController.text = 'student@example.com';
+      await authController.requestOtp();
+
+      final failWrongCode = await authController.verifyOtp('654321');
+      expect(failWrongCode, false);
+      expect(authController.isAuthenticated, false);
+      expect(authController.errorMessage, 'Invalid or expired code.');
+
+      final failRandomSixDigits = await authController.verifyOtp('999999');
+      expect(failRandomSixDigits, false);
+      expect(authController.isAuthenticated, false);
+      expect(authController.errorMessage, 'Invalid or expired code.');
+
+      final successFixedCode = await authController.verifyOtp('123456');
+      expect(successFixedCode, true);
       expect(authController.isAuthenticated, true);
-      expect(authController.session?.user.isAadhaarVerified, true);
     });
 
-    test('APAAR ID verification sets authenticated session', () async {
-      final success = await authController.loginWithApaar('APAAR-2026-9921');
-      expect(success, true);
+    test('Logout action clears session credentials', () async {
+      authController.emailController.text = 'student@example.com';
+      await authController.requestOtp();
+      await authController.verifyOtp('123456');
       expect(authController.isAuthenticated, true);
-      expect(authController.session?.user.apaarId, 'APAAR-2026-9921');
+
+      await authController.logout();
+      expect(authController.isAuthenticated, false);
+      expect(authController.session, isNull);
     });
   });
 }

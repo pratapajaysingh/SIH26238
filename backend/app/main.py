@@ -32,6 +32,7 @@ def init_db_schema(force: bool = False) -> None:
     """Ensure database schema is up-to-date and seed data is present on startup."""
     # Skip during automated test execution unless forced
     if not force and ("pytest" in sys.modules or os.getenv("TESTING") == "1"):
+        logger.info("Skipping auto-migration and seed (AUTO_INIT_DB is not 1)")
         return
 
     app_dir = Path(__file__).resolve().parent.parent
@@ -91,15 +92,18 @@ def init_db_schema(force: bool = False) -> None:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup tasks
-    try:
-        init_db_schema()
-    except Exception as exc:
-        logger.error(f"Error initializing database on startup: {exc}")
+    pass
     yield
     # Shutdown tasks
 
 
 app = FastAPI(title="TribalSetu API", lifespan=lifespan)
+
+from app.core.config import assert_production_config
+
+@app.on_event("startup")
+def _validate_config() -> None:
+    assert_production_config()
 
 # Safe CORS configuration for development
 app.add_middleware(
@@ -121,6 +125,8 @@ async def global_exception_handler(request: Request, exc: Exception):
 
 
 # Core API routes
+from app.api import auth_otp
+app.include_router(auth_otp.router)
 app.include_router(auth_router, prefix="/api/v1")
 app.include_router(student_router, prefix="/api/v1")
 app.include_router(user_router, prefix="/api/v1")
@@ -134,6 +140,7 @@ app.include_router(digilocker_router, prefix="/api/v1")
 app.include_router(jago_router, prefix="/api/v1")
 app.include_router(notification_router, prefix="/api/v1")
 app.include_router(analytics_router, prefix="/api/v1")
+
 
 
 @app.get("/")
@@ -233,4 +240,4 @@ if __name__ == "__main__":
     import uvicorn
     from app.core.config import HOST, PORT
 
-    uvicorn.run("app.main:app", host=HOST, port=PORT, reload=False)
+    uvicorn.run("app.main:app", host=HOST, port=PORT, reload=False)

@@ -44,3 +44,51 @@ def test_manual_review_lifecycle(client, seeded_db):
     # Subsequent attempt to queue again should return 409
     dup_review_res = client.post(f"/api/v1/verifications/{verif_id}/manual-review")
     assert dup_review_res.status_code == 409
+
+    # 1. Verify student cannot access the manual review queue
+    student_login = client.post(
+        "/api/v1/auth/login",
+        json={"email": "demo.student@example.com", "password": "DemoPassword123!"},
+    )
+    assert student_login.status_code == 200
+    st_token = student_login.json()["access_token"]
+    st_queue_res = client.get(
+        "/api/v1/manual-reviews",
+        headers={"Authorization": f"Bearer {st_token}"},
+    )
+    assert st_queue_res.status_code == 403
+    assert "Student accounts cannot access" in st_queue_res.json()["detail"]
+
+    # 2. Verify student cannot decide/resolve manual review
+    st_decide_res = client.post(
+        f"/api/v1/manual-reviews/{review_data['id']}/decide",
+        json={"action": "APPROVE", "remarks": "Trying to bypass as student"},
+        headers={"Authorization": f"Bearer {st_token}"},
+    )
+    assert st_decide_res.status_code == 403
+
+    # 3. Verify Admin can access queue and approve the manual review
+    admin_login = client.post(
+        "/api/v1/auth/login",
+        json={"email": "admin.mota@tribalsetu.gov.in", "password": "AdminSecret123!"},
+    )
+    assert admin_login.status_code == 200
+    admin_token = admin_login.json()["access_token"]
+
+    admin_queue_res = client.get(
+        "/api/v1/manual-reviews",
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+    assert admin_queue_res.status_code == 200
+    reviews = admin_queue_res.json()
+    assert any(r["id"] == review_data["id"] for r in reviews)
+
+    # Admin approves
+    admin_decide_res = client.post(
+        f"/api/v1/manual-reviews/{review_data['id']}/decide",
+        json={"action": "APPROVE", "remarks": "Income document verified manually via tehsildar stamp"},
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+    assert admin_decide_res.status_code == 200
+    assert admin_decide_res.json()["status"] == "RESOLVED"
+

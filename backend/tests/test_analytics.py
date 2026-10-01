@@ -53,3 +53,92 @@ def test_unreached_summary_deterministic(client):
     assert summary["total_matched"] == 2
     assert summary["total_unreached"] == 3
     assert summary["unreached_percentage"] == 60.0
+
+
+def test_student_role_denied_access_to_analytics(client, seeded_db):
+    """Authenticated student user must be rejected with 403 on ministry analytics."""
+    # Student login
+    login_res = client.post(
+        "/api/v1/auth/login",
+        json={"email": "demo.student@example.com", "password": "DemoPassword123!"},
+    )
+    assert login_res.status_code == 200
+    token = login_res.json()["access_token"]
+
+    # Student calls /analytics/dashboard
+    dash_res = client.get(
+        "/api/v1/analytics/dashboard",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert dash_res.status_code == 403
+    assert "Admin role required" in dash_res.json()["detail"]
+
+    # Student calls /analytics/unreached-beneficiaries
+    unreached_res = client.get(
+        "/api/v1/analytics/unreached-beneficiaries",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert unreached_res.status_code == 403
+
+
+def test_admin_role_granted_access_to_analytics(client, seeded_db):
+    """Authenticated Admin user can access ministry analytics."""
+    login_res = client.post(
+        "/api/v1/auth/login",
+        json={"email": "admin.mota@tribalsetu.gov.in", "password": "AdminSecret123!"},
+    )
+    assert login_res.status_code == 200
+    token = login_res.json()["access_token"]
+
+    dash_res = client.get(
+        "/api/v1/analytics/dashboard",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert dash_res.status_code == 200
+    data = dash_res.json()
+    assert "total_applications" in data
+
+
+def test_outreach_notification_appears_in_student_notifications(client, seeded_db):
+    """Outreach dispatched by admin appears in target student's notification feed."""
+    # 1. Admin logs in
+    admin_login = client.post(
+        "/api/v1/auth/login",
+        json={"email": "admin.mota@tribalsetu.gov.in", "password": "AdminSecret123!"},
+    )
+    assert admin_login.status_code == 200
+    admin_token = admin_login.json()["access_token"]
+
+    # 2. Admin sends outreach to unreached student (ENROL-ST-002 -> Student 2: Rani Marandi)
+    outreach_res = client.post(
+        "/api/v1/analytics/unreached-beneficiaries/outreach",
+        json={
+            "demo_id": "ENROL-ST-002",
+            "title": "Special ST Scholarship Outreach",
+            "message": "You are eligible for Pre-Matric and Post-Matric schemes.",
+        },
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+    assert outreach_res.status_code == 201
+    outreach_data = outreach_res.json()
+    assert outreach_data["title"] == "Special ST Scholarship Outreach"
+    assert outreach_data["is_read"] is False
+
+    # 3. Student 2 logs in
+    student_login = client.post(
+        "/api/v1/auth/login",
+        json={"email": "demo.student2@example.com", "password": "DemoPassword456!"},
+    )
+    assert student_login.status_code == 200
+    student_token = student_login.json()["access_token"]
+
+    # 4. Student 2 fetches their notifications: GET /api/v1/notifications/me
+    notif_res = client.get(
+        "/api/v1/notifications/me",
+        headers={"Authorization": f"Bearer {student_token}"},
+    )
+    assert notif_res.status_code == 200
+    notifs = notif_res.json()
+    titles = [n["title"] for n in notifs]
+    assert "Special ST Scholarship Outreach" in titles
+

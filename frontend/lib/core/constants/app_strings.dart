@@ -16,28 +16,19 @@ class AppStrings {
   static const String roleAdmin = 'Admin';
   static const String roleInstitute = 'Institute';
 
-  // Auth Methods
-  static const String methodMobile = 'Mobile Number';
-  static const String methodAadhaar = 'Aadhaar';
-
   // Input Fields & Actions
-  static const String countryCodeIndia = '+91';
-  static const String mobilePlaceholder = 'Enter your mobile number';
-  static const String aadhaarPlaceholder = 'Enter your 12-digit Aadhaar number';
-  static const String continueButton = 'Continue';
-  static const String orDivider = 'OR';
+  static const String emailPlaceholder = 'Enter your email address';
+  static const String sendCodeButton = 'Send code';
+  static const String verifyButton = 'Verify & Continue';
+  static const String resendCodeButton = 'Resend code';
+  static const String changeEmailButton = 'Change email';
 
-  // Action Cards
-  static const String digilockerTitle = 'Continue with DigiLocker';
-  static const String digilockerSubtitle = 'Access using your DigiLocker account';
-  static const String apaarTitle = 'Continue with APAAR';
-  static const String apaarSubtitle = 'Using your APAAR ID';
-
-  // Validation Messages
-  static const String mobileRequired = 'Please enter your mobile number';
-  static const String mobileInvalid = 'Please enter a valid 10-digit mobile number';
-  static const String aadhaarRequired = 'Please enter your Aadhaar number';
-  static const String aadhaarInvalid = 'Please enter a valid 12-digit Aadhaar number';
-  static const String otpRequired = 'Please enter the 6-digit OTP';
-  static const String otpInvalid = 'Invalid OTP. Please check and try again.';
+  // Validation & Feedback Messages
+  static const String emailRequired = 'Please enter your email address';
+  static const String emailInvalid = 'Please enter a valid email address';
+  static const String otpRequired = 'Please enter the 6-digit code';
+  static const String otpInvalid = 'Invalid or expired code.';
+  static const String networkError = 'Unable to connect to server. Please check your internet connection.';
+  static const String serverError = 'Could not send the code right now. Please try again.';
+  static const String rateLimitError = 'Too many requests. Please wait before trying again.';
 }

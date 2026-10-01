@@ -32,6 +32,9 @@ DEMO_STUDENT_ID_3 = "00000000-0000-0000-0000-000000000006"
 DEMO_USER_ID_4 = "00000000-0000-0000-0000-000000000007"
 DEMO_STUDENT_ID_4 = "00000000-0000-0000-0000-000000000008"
 
+# Admin User: Ministry of Tribal Affairs Nodal Officer
+DEMO_ADMIN_USER_ID = "00000000-0000-0000-0000-000000000009"
+
 DEMO_SCHOLARSHIPS = [
     {
         "id": "00000000-0000-0000-0000-000000000010",
@@ -388,7 +391,7 @@ def seed_database(db: Session, reset: bool = False) -> dict:
         for s in DEMO_SCHOLARSHIPS:
             db.query(Scholarship).filter(Scholarship.code == s["code"]).delete(synchronize_session=False)
         db.query(Student).filter(Student.id.in_([DEMO_STUDENT_ID, DEMO_STUDENT_ID_2, DEMO_STUDENT_ID_3, DEMO_STUDENT_ID_4])).delete(synchronize_session=False)
-        db.query(User).filter(User.id.in_([DEMO_USER_ID, DEMO_USER_ID_2, DEMO_USER_ID_3, DEMO_USER_ID_4])).delete(synchronize_session=False)
+        db.query(User).filter(User.id.in_([DEMO_USER_ID, DEMO_USER_ID_2, DEMO_USER_ID_3, DEMO_USER_ID_4, DEMO_ADMIN_USER_ID])).delete(synchronize_session=False)
         db.commit()
 
     created_counts = {
@@ -406,24 +409,28 @@ def seed_database(db: Session, reset: bool = False) -> dict:
 
     # 1. Users
     user_definitions = [
-        (DEMO_USER_ID, "Demo Student User", "demo.student@example.com", "DemoPassword123!"),
-        (DEMO_USER_ID_2, "Demo Student Two", "demo.student2@example.com", "DemoPassword456!"),
-        (DEMO_USER_ID_3, "Sunita Soren", "demo.student3@example.com", "DemoPassword789!"),
-        (DEMO_USER_ID_4, "Birsa Kerketta", "demo.student4@example.com", "DemoPassword012!"),
+        (DEMO_USER_ID, "Demo Student User", "demo.student@example.com", "DemoPassword123!", "STUDENT"),
+        (DEMO_USER_ID_2, "Demo Student Two", "demo.student2@example.com", "DemoPassword456!", "STUDENT"),
+        (DEMO_USER_ID_3, "Sunita Soren", "demo.student3@example.com", "DemoPassword789!", "STUDENT"),
+        (DEMO_USER_ID_4, "Birsa Kerketta", "demo.student4@example.com", "DemoPassword012!", "STUDENT"),
+        (DEMO_ADMIN_USER_ID, "MoTA Admin Officer", "admin.mota@tribalsetu.gov.in", "AdminSecret123!", "ADMIN"),
     ]
 
     users = {}
-    for uid, name, email, pwd in user_definitions:
+    for uid, name, email, pwd, role in user_definitions:
         u = db.query(User).filter(User.id == uid).first()
         if not u:
             u_by_email = db.query(User).filter(User.email == email).first()
             if not u_by_email:
-                u = User(id=uid, name=name, email=email, password=hash_password(pwd))
+                u = User(id=uid, name=name, email=email, password=hash_password(pwd), role=role)
                 db.add(u)
                 db.flush()
                 created_counts["users"] += 1
             else:
                 u = u_by_email
+                u.role = role
+        else:
+            u.role = role
         users[uid] = u
 
     # 2. Students

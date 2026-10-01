@@ -48,3 +48,28 @@ def create_manual_review(db: Session, verification_id: str):
 
 def get_manual_reviews(db: Session):
     return repo_get_manual_reviews(db)
+
+
+def decide_manual_review(db: Session, review_id: str, action: str, remarks: str | None = None):
+    from app.models.manual_review import ManualReview
+    review = db.query(ManualReview).filter(ManualReview.id == review_id).first()
+    if not review:
+        return "NOT_FOUND"
+
+    action_norm = (action or "").strip().upper()
+    if action_norm not in {"APPROVE", "APPROVED", "REJECT", "REJECTED"}:
+        return "INVALID_ACTION"
+
+    verification = get_verification_by_id(db, review.verification_id)
+    if action_norm in {"APPROVE", "APPROVED"}:
+        review.status = "RESOLVED"
+        if verification:
+            update_verification_status(db, verification, "VERIFIED", commit=False)
+    else:
+        review.status = "REJECTED"
+        if verification:
+            update_verification_status(db, verification, "REJECTED", commit=False)
+
+    db.commit()
+    db.refresh(review)
+    return review

@@ -56,13 +56,22 @@ class PaymentRecord {
     final rawId = (json['id'] ?? json['application_id'] ?? 'PAY-001').toString();
     final rawAppId = (json['application_id'] ?? json['id'] ?? '').toString();
 
+    final rawAmount = json['amount'];
+    double parsedAmount = 0.0;
+    if (rawAmount is num) {
+      parsedAmount = rawAmount.toDouble();
+    } else if (rawAmount is String) {
+      final digits = rawAmount.replaceAll(RegExp(r'[^0-9.]'), '');
+      parsedAmount = double.tryParse(digits) ?? 0.0;
+    }
+
     return PaymentRecord(
       id: rawId,
       applicationId: rawAppId,
       studentId: json['student_id'] as String?,
       schemeId: json['scheme_id'] as String?,
       schemeName: json['scheme_name'] as String? ?? 'Scholarship Grant',
-      amount: (json['amount'] as num?)?.toDouble() ?? 0.0,
+      amount: parsedAmount,
       status: PaymentStatus.fromString(rawStatus),
       transactionRef: rawRef as String?,
       paymentDate: rawDate != null ? DateTime.tryParse(rawDate.toString()) : null,

@@ -5,6 +5,7 @@ import '../../../models/scholarship.dart';
 import '../../../repositories/scholarship_repository.dart';
 import '../../dashboard/widgets/custom_bottom_nav_bar.dart';
 import '../../dashboard/widgets/dashboard_header.dart';
+import '../../eligibility/widgets/scheme_conflict_dialog.dart';
 
 /// ScholarshipDetailsScreen displays comprehensive scheme guidelines, eligibility overview,
 /// and document requirements for a specific scholarship scheme.
@@ -241,11 +242,43 @@ class _ScholarshipDetailsScreenState extends State<ScholarshipDetailsScreen> {
                           ),
                           const SizedBox(height: 10),
                           OutlinedButton.icon(
-                            onPressed: () {
-                              Navigator.of(context).pushNamed(
-                                '/apply',
-                                arguments: _scholarship,
+                            onPressed: () async {
+                              final sch = _scholarship;
+                              if (sch == null) return;
+                              showDialog<void>(
+                                context: context,
+                                barrierDismissible: false,
+                                builder: (ctx) => const Center(
+                                  child: CircularProgressIndicator(
+                                    color: Color(0xFF111827),
+                                  ),
+                                ),
                               );
+                              try {
+                                final conflict = await ServiceLocator.instance.eligibilityRepository.checkConflict(
+                                  studentId: 'TS2024S10023',
+                                  schemeId: sch.id,
+                                );
+                                if (context.mounted) {
+                                  Navigator.of(context, rootNavigator: true).pop();
+                                  if (conflict.hasConflict) {
+                                    SchemeConflictDialog.show(context, conflict: conflict);
+                                    return;
+                                  }
+                                  Navigator.of(context).pushNamed(
+                                    '/apply',
+                                    arguments: sch,
+                                  );
+                                }
+                              } catch (_) {
+                                if (context.mounted) {
+                                  Navigator.of(context, rootNavigator: true).pop();
+                                  Navigator.of(context).pushNamed(
+                                    '/apply',
+                                    arguments: sch,
+                                  );
+                                }
+                              }
                             },
                             icon: const Icon(Icons.edit_document, color: Color(0xFF0F172A), size: 18),
                             label: const Text(

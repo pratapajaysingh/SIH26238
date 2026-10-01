@@ -6,6 +6,7 @@ import '../../../models/scholarship.dart';
 import '../controllers/application_form_controller.dart';
 import '../../dashboard/widgets/custom_bottom_nav_bar.dart';
 import '../../dashboard/widgets/dashboard_header.dart';
+import '../../eligibility/widgets/scheme_conflict_dialog.dart';
 
 /// ApplicationFormScreen is the multi-step scholarship application wizard.
 ///
@@ -53,6 +54,27 @@ class _ApplicationFormScreenState extends State<ApplicationFormScreen> {
 
     if (widget.scholarship != null) {
       _controller.initialize(scheme: widget.scholarship!);
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        if (!mounted) return;
+        try {
+          final conflict = await ServiceLocator.instance.eligibilityRepository.checkConflict(
+            studentId: 'TS2024S10023',
+            schemeId: widget.scholarship!.id,
+          );
+          if (mounted && conflict.hasConflict) {
+            SchemeConflictDialog.show(
+              context,
+              conflict: conflict,
+              onViewExistingApplication: () {
+                Navigator.of(context).pushReplacementNamed(
+                  '/application-details',
+                  arguments: conflict.existingApplicationId,
+                );
+              },
+            );
+          }
+        } catch (_) {}
+      });
     }
   }
 

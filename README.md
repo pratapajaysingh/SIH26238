@@ -1,8 +1,29 @@
 # TribalSetu (SIH-26238)
 
-TribalSetu is an integrated platform designed to streamline tribal scholarship discovery, student application tracking, document management, DigiLocker import simulation, and verification workflows.
+TribalSetu is an integrated platform designed to streamline tribal scholarship discovery, student application tracking, document management, DigiLocker import simulation, and verification workflows for the Ministry of Tribal Affairs (MoTA).
+
+> [!IMPORTANT]
+> **SIH 2026 Evaluation Quick Links:**
+> - 🚀 **[docs/DEMO.md](docs/DEMO.md)** — Complete startup commands, seed test credentials, and a step-by-step 3-minute golden path demo script.
+> - 📱 **[frontend/README.md](frontend/README.md)** — Comprehensive frontend guide for running in Mock Mode vs Live API Mode across Web, Windows, Android Emulator, and Physical Devices.
 
 ---
+
+## Simulated External Government Integrations (Sandbox Architecture)
+
+In adherence to SIH prototype guidelines and government security best practices, TribalSetu interfaces with third-party governmental services via dedicated, modular simulation adapters:
+
+| External System | Integration Mode | Purpose in TribalSetu |
+| :--- | :--- | :--- |
+| **UIDAI (Aadhaar)** | Simulated Sandbox | Instant demographic verification, Aadhaar OTP authentication, and DBT bank seeding checks |
+| **DigiLocker** | Mock Adapter (`/students/{id}/digilocker`) | Pulls certified digital documents (ST Caste Certificate, Income Certificate, Marksheets) |
+| **AISHE** | Mock Cross-reference | Verifies higher education college enrollment; identifies unreached ST students who have not applied for scholarships |
+| **UDISE+** | Mock Adapter | Pre-matric student and school verification |
+| **APAAR / ABC ID** | Simulated Verification | Automated student Academic Bank of Credits and profile linking |
+| **UGC-NTA** | Mock Adapter | Fellowship eligibility and exam qualification checks for National Fellowship for ST (NFST) |
+| **State e-District** | Mock Adapter | Domicile and family annual income certificate validation against state welfare records |
+| **NSP Bridge** | Mock Adapter | Legacy National Scholarship Portal application reconciliation |
+| **PFMS / NOS DBT** | Mock Disbursement | Automated Direct Benefit Transfer (DBT) payment generation, tracking, and disbursal simulation |
 
 ## 1. Project Structure
 

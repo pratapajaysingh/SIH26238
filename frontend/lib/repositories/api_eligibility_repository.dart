@@ -1,6 +1,7 @@
 import '../core/constants/api_constants.dart';
 import '../core/network/api_client.dart';
 import '../core/network/api_exceptions.dart';
+import '../models/conflict_check_result.dart';
 import '../models/eligibility_check_result.dart';
 import 'eligibility_repository.dart';
 
@@ -60,4 +61,63 @@ class ApiEligibilityRepository implements EligibilityRepository {
           : 'Failed to evaluate eligibility',
     );
   }
+
+  @override
+  Future<ConflictCheckResult> checkConflict({
+    required String studentId,
+    required String schemeId,
+  }) async {
+    // Resolve studentId if not UUID
+    String effectiveStudentId = studentId;
+    if (!studentId.contains('-')) {
+      try {
+        final sRes = await apiClient.get<Map<String, dynamic>>(ApiConstants.studentsMe);
+        if (sRes.success && sRes.data != null && sRes.data!['id'] != null) {
+          effectiveStudentId = sRes.data!['id'].toString();
+        } else {
+          effectiveStudentId = '00000000-0000-0000-0000-000000000002';
+        }
+      } catch (_) {
+        effectiveStudentId = '00000000-0000-0000-0000-000000000002';
+      }
+    }
+
+    // Resolve schemeId if not UUID
+    String effectiveSchemeId = schemeId;
+    if (!schemeId.contains('-')) {
+      try {
+        final schRes = await apiClient.get<List<dynamic>>(ApiConstants.scholarships);
+        if (schRes.success && schRes.data != null && schRes.data!.isNotEmpty) {
+          final matched = schRes.data!.firstWhere(
+            (s) =>
+                (s['code']?.toString().toUpperCase() == schemeId.toUpperCase()) ||
+                (s['id']?.toString() == schemeId),
+            orElse: () => schRes.data!.first,
+          );
+          effectiveSchemeId = matched['id'].toString();
+        }
+      } catch (_) {}
+    }
+
+    final response = await apiClient.post<ConflictCheckResult>(
+      ApiConstants.eligibilityConflictCheck,
+      body: {
+        'student_id': effectiveStudentId,
+        'scholarship_id': effectiveSchemeId,
+      },
+      fromJson: (json) =>
+          ConflictCheckResult.fromJson(json as Map<String, dynamic>),
+    );
+
+    if (response.success && response.data != null) {
+      return response.data!;
+    }
+
+    throw ApiException(
+      response.message.isNotEmpty
+          ? response.message
+          : 'Failed to evaluate scheme conflicts',
+    );
+  }
 }
+

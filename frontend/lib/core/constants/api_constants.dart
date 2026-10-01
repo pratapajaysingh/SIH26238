@@ -10,12 +10,9 @@ class ApiConstants {
   );
   static const String apiVersion = '/api/v1';
 
-  // Auth endpoints
-  static const String authLogin = '$apiVersion/auth/login';
-  static const String authMe = '$apiVersion/auth/me';
-  static const String users = '$apiVersion/users';
-  static const String usersMe = '$apiVersion/users/me';
-  static const String usersLogin = '$apiVersion/users/login';
+  // Auth endpoints (live OTP authentication contract)
+  static const String authOtpRequest = '$apiVersion/auth/otp/request';
+  static const String authOtpVerify = '$apiVersion/auth/otp/verify';
 
   // Student endpoints
   static const String studentsMe = '$apiVersion/students/me';
@@ -27,7 +24,9 @@ class ApiConstants {
   static const String scholarships = '$apiVersion/scholarships';
 
   // Eligibility
+  // Eligibility & Conflict Check
   static const String eligibilityCheck = '$apiVersion/eligibility/check';
+  static const String eligibilityConflictCheck = '$apiVersion/eligibility/conflict-check';
 
   // Applications
   static const String applicationsMe = '$apiVersion/applications/me';
@@ -43,6 +42,16 @@ class ApiConstants {
 
   // Verifications
   static String verificationExecute(String id) => '$apiVersion/verifications/$id/execute';
+
+  // Manual Review Queue
+  static const String manualReviews = '$apiVersion/manual-reviews';
+  static String manualReviewDecide(String id) => '$apiVersion/manual-reviews/$id/decide';
+
+  // Analytics & Ministry Dashboard
+  static const String analyticsDashboard = '$apiVersion/analytics/dashboard';
+  static const String analyticsUnreached = '$apiVersion/analytics/unreached-beneficiaries';
+  static const String analyticsUnreachedAll = '$apiVersion/analytics/unreached-beneficiaries/all';
+  static const String analyticsOutreach = '$apiVersion/analytics/unreached-beneficiaries/outreach';
 
   // Documents
   static const String documents = '$apiVersion/documents';

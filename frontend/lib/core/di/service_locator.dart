@@ -1,5 +1,6 @@
 import '../constants/api_constants.dart';
 import '../network/api_client.dart';
+import '../storage/token_storage.dart';
 import '../../repositories/auth_repository.dart';
 import '../../repositories/api_auth_repository.dart';
 import '../../repositories/mock_auth_repository.dart';
@@ -33,6 +34,9 @@ import '../../repositories/mock_verification_repository.dart';
 import '../../repositories/payment_repository.dart';
 import '../../repositories/api_payment_repository.dart';
 import '../../repositories/mock_payment_repository.dart';
+import '../../repositories/admin_repository.dart';
+import '../../repositories/api_admin_repository.dart';
+import '../../repositories/mock_admin_repository.dart';
 
 /// ServiceLocator provides centralized access to all repository instances.
 ///
@@ -88,9 +92,16 @@ class ServiceLocator {
     _apiClient.setAuthToken(token);
   }
 
+  // ── STORAGE ───────────────────────────────────────────────
+  late final TokenStorage _tokenStorage = TokenStorage();
+  TokenStorage get tokenStorage => _tokenStorage;
+
   // ── SINGLETON REPOSITORY INSTANCES ────────────────────────
   late final MockAuthRepository _mockAuthRepository = MockAuthRepository();
-  late final ApiAuthRepository _apiAuthRepository = ApiAuthRepository(apiClient: _apiClient);
+  late final ApiAuthRepository _apiAuthRepository = ApiAuthRepository(
+    apiClient: _apiClient,
+    tokenStorage: _tokenStorage,
+  );
 
   late final MockStudentRepository _mockStudentRepository = MockStudentRepository();
   late final ApiStudentRepository _apiStudentRepository = ApiStudentRepository(apiClient: _apiClient);
@@ -122,6 +133,9 @@ class ServiceLocator {
   late final MockPaymentRepository _mockPaymentRepository = MockPaymentRepository();
   late final ApiPaymentRepository _apiPaymentRepository = ApiPaymentRepository(apiClient: _apiClient);
 
+  late final MockAdminRepository _mockAdminRepository = MockAdminRepository();
+  late final ApiAdminRepository _apiAdminRepository = ApiAdminRepository(apiClient: _apiClient);
+
   // ── REPOSITORY GETTERS ────────────────────────────────────
   AuthRepository get authRepository => useMock ? _mockAuthRepository : _apiAuthRepository;
   StudentRepository get studentRepository => useMock ? _mockStudentRepository : _apiStudentRepository;
@@ -134,4 +148,5 @@ class ServiceLocator {
   EligibilityRepository get eligibilityRepository => useMock ? _mockEligibilityRepository : _apiEligibilityRepository;
   VerificationRepository get verificationRepository => useMock ? _mockVerificationRepository : _apiVerificationRepository;
   PaymentRepository get paymentRepository => useMock ? _mockPaymentRepository : _apiPaymentRepository;
+  AdminRepository get adminRepository => useMock ? _mockAdminRepository : _apiAdminRepository;
 }

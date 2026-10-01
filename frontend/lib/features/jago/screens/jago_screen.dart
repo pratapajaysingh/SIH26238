@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/constants/asset_constants.dart';
 import '../../../core/di/service_locator.dart';
+import '../../../core/services/language_service.dart';
 import '../../dashboard/widgets/custom_bottom_nav_bar.dart';
 import '../../dashboard/widgets/dashboard_header.dart';
 import '../controllers/jago_controller.dart';
@@ -44,11 +45,19 @@ class _JagoScreenState extends State<JagoScreen> {
         );
 
     _controller.addListener(_onControllerUpdate);
+    LanguageService.instance.addListener(_onGlobalLanguageChange);
     _controller.loadConversation();
+  }
+
+  void _onGlobalLanguageChange() {
+    if (mounted && _controller.currentLanguage != LanguageService.instance.currentLanguage) {
+      _controller.setLanguage(LanguageService.instance.currentLanguage);
+    }
   }
 
   @override
   void dispose() {
+    LanguageService.instance.removeListener(_onGlobalLanguageChange);
     _scrollController.dispose();
     if (widget.controller == null) {
       _controller.dispose();
@@ -158,16 +167,19 @@ class _JagoScreenState extends State<JagoScreen> {
                               borderRadius: BorderRadius.circular(10),
                               border: Border.all(color: const Color(0xFFE5E7EB), width: 0.8),
                             ),
-                            child: Row(
+                            child: SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              child: Row(
                               children: JagoController.supportedLanguages.map((lang) {
                                 final isSelected = _controller.currentLanguage == lang['code'];
-                                return Expanded(
+                                return Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 3),
                                   child: GestureDetector(
                                     key: Key('lang_switch_${lang['code']}'),
                                     onTap: () => _controller.setLanguage(lang['code']!),
                                     child: AnimatedContainer(
                                       duration: const Duration(milliseconds: 200),
-                                      padding: const EdgeInsets.symmetric(vertical: 6.5),
+                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6.5),
                                       decoration: BoxDecoration(
                                         color: isSelected ? const Color(0xFF111827) : Colors.transparent,
                                         borderRadius: BorderRadius.circular(7.5),

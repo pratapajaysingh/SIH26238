@@ -11,5 +11,6 @@ class User(Base):
     name = Column(String, nullable=False)
     email = Column(String, unique=True, nullable=False)
     password = Column(String, nullable=False)
+    role = Column(String, nullable=False, default="STUDENT")
 
     student = relationship("Student", back_populates="user", uselist=False)

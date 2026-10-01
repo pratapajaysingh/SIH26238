@@ -23,3 +23,9 @@ class ValidationException extends ApiException {
 
   const ValidationException(super.message, {this.errors = const {}, super.statusCode});
 }
+
+class RateLimitException extends ApiException {
+  final int retryAfterSeconds;
+
+  const RateLimitException(super.message, {this.retryAfterSeconds = 60, super.statusCode});
+}

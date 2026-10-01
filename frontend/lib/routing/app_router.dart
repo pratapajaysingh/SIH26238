@@ -1,4 +1,5 @@
-import 'package:flutter/material.dart';
+import '../core/enums/role_enum.dart';
+import '../features/admin/screens/admin_dashboard_screen.dart';
 import '../features/applications/screens/my_applications_screen.dart';
 import '../features/auth/controllers/auth_controller.dart';
 import '../features/auth/screens/login_screen.dart';
@@ -30,6 +31,21 @@ class AppRouter {
       case '/':
         return MaterialPageRoute(
           builder: (_) => LoginScreen(controller: authController),
+          settings: settings,
+        );
+
+      case '/admin':
+      case '/admin/dashboard':
+        // Role guard: student users must not reach admin routes
+        if (authController.session?.user.role == UserRole.student &&
+            authController.selectedRole == UserRole.student) {
+          return MaterialPageRoute(
+            builder: (_) => DashboardScreen(authController: authController),
+            settings: settings,
+          );
+        }
+        return MaterialPageRoute(
+          builder: (_) => AdminDashboardScreen(authController: authController),
           settings: settings,
         );
 

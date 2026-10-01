@@ -1,22 +1,22 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import '../../../core/constants/app_strings.dart';
 import '../../../core/theme/app_colors.dart';
 
-/// MobileInputField renders the premium Indian phone number input container
-/// matching the exact styling of the reference design.
-class MobileInputField extends StatelessWidget {
+/// EmailInputField renders the input container for entering student/user email addresses.
+class EmailInputField extends StatelessWidget {
   final TextEditingController controller;
   final ValueChanged<String>? onChanged;
   final VoidCallback? onSubmitted;
   final bool hasError;
+  final bool isEnabled;
 
-  const MobileInputField({
+  const EmailInputField({
     super.key,
     required this.controller,
     this.onChanged,
     this.onSubmitted,
     this.hasError = false,
+    this.isEnabled = true,
   });
 
   @override
@@ -24,7 +24,7 @@ class MobileInputField extends StatelessWidget {
     return Container(
       height: 48,
       decoration: BoxDecoration(
-        color: AppColors.white,
+        color: isEnabled ? AppColors.white : const Color(0xFFF9FAFB),
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
           color: hasError ? AppColors.statusError : const Color(0xFFE5E7EB),
@@ -34,27 +34,13 @@ class MobileInputField extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // Country Code +91 Selector
-          Padding(
-            padding: const EdgeInsets.only(left: 14, right: 10),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: const [
-                Text(
-                  AppStrings.countryCodeIndia,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF111827),
-                  ),
-                ),
-                SizedBox(width: 4),
-                Icon(
-                  Icons.keyboard_arrow_down_rounded,
-                  size: 16,
-                  color: Color(0xFF111827),
-                ),
-              ],
+          // Email Icon Prefix
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 14.0),
+            child: Icon(
+              Icons.mail_outline_rounded,
+              size: 20,
+              color: Color(0xFF6B7280),
             ),
           ),
 
@@ -65,13 +51,16 @@ class MobileInputField extends StatelessWidget {
             color: const Color(0xFFE5E7EB),
           ),
 
-          const SizedBox(width: 10),
+          const SizedBox(width: 12),
 
-          // Numeric Text Field
+          // Email Input Text Field
           Expanded(
             child: TextField(
               controller: controller,
-              keyboardType: TextInputType.phone,
+              enabled: isEnabled,
+              keyboardType: TextInputType.emailAddress,
+              autocorrect: false,
+              enableSuggestions: true,
               textInputAction: TextInputAction.done,
               style: const TextStyle(
                 fontSize: 14,
@@ -80,12 +69,8 @@ class MobileInputField extends StatelessWidget {
               ),
               onChanged: onChanged,
               onSubmitted: (_) => onSubmitted?.call(),
-              inputFormatters: [
-                FilteringTextInputFormatter.digitsOnly,
-                LengthLimitingTextInputFormatter(10),
-              ],
               decoration: const InputDecoration(
-                hintText: AppStrings.mobilePlaceholder,
+                hintText: AppStrings.emailPlaceholder,
                 hintStyle: TextStyle(
                   fontSize: 13.5,
                   fontWeight: FontWeight.w400,

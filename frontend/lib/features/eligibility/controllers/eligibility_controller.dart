@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../models/conflict_check_result.dart';
 import '../../../models/eligibility_check_result.dart';
 import '../../../models/scholarship.dart';
 import '../../../repositories/eligibility_repository.dart';
@@ -8,6 +9,7 @@ import '../../../repositories/scholarship_repository.dart';
 /// Strictly conforms to:
 /// - Screen -> Controller -> Repository -> ApiClient architecture
 /// - POST /api/v1/eligibility/check
+/// - POST /api/v1/eligibility/conflict-check
 /// - GET /api/v1/scholarships
 class EligibilityController extends ChangeNotifier {
   final EligibilityRepository _eligibilityRepository;
@@ -29,7 +31,9 @@ class EligibilityController extends ChangeNotifier {
   Scholarship? _selectedScheme;
   bool _isLoadingSchemes = false;
   bool _isChecking = false;
+  bool _isCheckingConflict = false;
   EligibilityCheckResult? _result;
+  ConflictCheckResult? _conflictResult;
   String? _errorMessage;
   int _currentStep = 1;
 
@@ -38,10 +42,13 @@ class EligibilityController extends ChangeNotifier {
   Scholarship? get selectedScheme => _selectedScheme;
   bool get isLoadingSchemes => _isLoadingSchemes;
   bool get isChecking => _isChecking;
+  bool get isCheckingConflict => _isCheckingConflict;
   EligibilityCheckResult? get result => _result;
+  ConflictCheckResult? get conflictResult => _conflictResult;
   String? get errorMessage => _errorMessage;
   int get currentStep => _currentStep;
   String get studentId => _studentId;
+
 
   /// Loads the scholarship schemes catalog.
   Future<void> loadSchemes({
@@ -82,6 +89,7 @@ class EligibilityController extends ChangeNotifier {
     if (_selectedScheme?.id == scheme.id) return;
     _selectedScheme = scheme;
     _result = null;
+    _conflictResult = null;
     _errorMessage = null;
     _currentStep = 1;
     notifyListeners();
@@ -123,6 +131,40 @@ class EligibilityController extends ChangeNotifier {
     }
   }
 
+  /// Evaluates one-scheme-at-a-time rule for the selected or given scheme.
+  /// Strict contract:
+  /// POST /api/v1/eligibility/conflict-check
+  /// Body: {"student_id": "...", "scholarship_id": "..."}
+  Future<ConflictCheckResult?> checkConflict({String? schemeId}) async {
+    if (_isCheckingConflict) return _conflictResult;
+
+    final targetSchemeId = schemeId ?? _selectedScheme?.id;
+    if (targetSchemeId == null) {
+      _errorMessage = 'Please select a scholarship scheme first.';
+      notifyListeners();
+      return null;
+    }
+
+    _isCheckingConflict = true;
+    notifyListeners();
+
+    try {
+      final res = await _eligibilityRepository.checkConflict(
+        studentId: _studentId,
+        schemeId: targetSchemeId,
+      );
+      _conflictResult = res;
+      return res;
+    } catch (e) {
+      // In case of network error, do not completely block unless hard failure
+      _errorMessage = e.toString().replaceFirst('Exception: ', '').replaceFirst('ApiException: ', '');
+      return null;
+    } finally {
+      _isCheckingConflict = false;
+      notifyListeners();
+    }
+  }
+
   /// Clears error message and resets step
   void clearError() {
     _errorMessage = null;
@@ -132,6 +174,7 @@ class EligibilityController extends ChangeNotifier {
   /// Resets result back to step 1
   void reset() {
     _result = null;
+    _conflictResult = null;
     _errorMessage = null;
     _currentStep = 1;
     notifyListeners();

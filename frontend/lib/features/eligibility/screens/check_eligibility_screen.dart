@@ -11,6 +11,7 @@ import '../widgets/eligibility_page_header.dart';
 import '../widgets/eligibility_result_card.dart';
 import '../widgets/eligibility_stepper.dart';
 import '../widgets/proceed_to_apply_button.dart';
+import '../widgets/scheme_conflict_dialog.dart';
 import '../widgets/scheme_selector_card.dart';
 
 /// CheckEligibilityScreen faithfully implements the "Check Eligibility" feature
@@ -88,10 +89,34 @@ class _CheckEligibilityScreenState extends State<CheckEligibilityScreen> {
     }
   }
 
-  void _handleProceedToApply() {
+  Future<void> _handleProceedToApply() async {
+    final scheme = _controller.selectedScheme;
+    if (scheme == null) return;
+
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => const Center(
+        child: CircularProgressIndicator(
+          color: Color(0xFF111827),
+        ),
+      ),
+    );
+
+    final conflict = await _controller.checkConflict(schemeId: scheme.id);
+    if (!mounted) return;
+    Navigator.of(context, rootNavigator: true).pop();
+
+    if (conflict != null && conflict.hasConflict) {
+      if (!mounted) return;
+      SchemeConflictDialog.show(context, conflict: conflict);
+      return;
+    }
+
+    if (!mounted) return;
     Navigator.of(context).pushNamed(
       '/apply',
-      arguments: _controller.selectedScheme,
+      arguments: scheme,
     );
   }
 

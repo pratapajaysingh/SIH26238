@@ -2,23 +2,17 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_strings.dart';
 import '../../../core/constants/asset_constants.dart';
-import '../../../core/enums/auth_method_enum.dart';
 import '../../../core/enums/role_enum.dart';
 import '../../../core/theme/app_colors.dart';
 import '../controllers/auth_controller.dart';
-import '../widgets/aadhaar_input_field.dart';
-import '../widgets/auth_method_tab_bar.dart';
 import '../widgets/brand_header.dart';
 import '../widgets/continue_button.dart';
+import '../widgets/email_input_field.dart';
 import '../widgets/government_header.dart';
-import '../widgets/identity_provider_card.dart';
-import '../widgets/mobile_input_field.dart';
-import '../widgets/or_divider.dart';
 import '../widgets/role_segmented_control.dart';
 import 'otp_verification_screen.dart';
 
-/// LoginScreen faithfully implements the Student Login & Entry Experience
-/// reproducing the visual source of truth provided in the project specification.
+/// LoginScreen implements Step 1 of the Email OTP Authentication Experience.
 class LoginScreen extends StatefulWidget {
   final AuthController controller;
 
@@ -50,38 +44,19 @@ class _LoginScreenState extends State<LoginScreen> {
     if (mounted) setState(() {});
   }
 
-  Future<void> _handleContinue() async {
-    final isAadhaar = _controller.selectedMethod == AuthMethod.aadhaar;
-    final target = isAadhaar
-        ? _controller.aadhaarController.text.trim()
-        : _controller.mobileController.text.trim();
-
-    final success = await _controller.submitContinue();
+  Future<void> _handleSendCode() async {
+    final email = _controller.emailController.text.trim();
+    final success = await _controller.requestOtp();
     if (success && mounted) {
       Navigator.push(
         context,
         MaterialPageRoute(
           builder: (context) => OtpVerificationScreen(
             controller: _controller,
-            target: target,
-            isAadhaar: isAadhaar,
+            email: email,
           ),
         ),
       );
-    }
-  }
-
-  Future<void> _handleDigiLockerLogin() async {
-    final success = await _controller.loginWithDigiLocker();
-    if (success && mounted) {
-      Navigator.pushReplacementNamed(context, '/dashboard');
-    }
-  }
-
-  Future<void> _handleApaarLogin() async {
-    final success = await _controller.loginWithApaar();
-    if (success && mounted) {
-      Navigator.pushReplacementNamed(context, '/dashboard');
     }
   }
 
@@ -103,7 +78,7 @@ class _LoginScreenState extends State<LoginScreen> {
       body: Stack(
         fit: StackFit.expand,
         children: [
-          // 1. Top Decorative Tribal Pattern (Flowing dark curve on top right)
+          // 1. Top Decorative Tribal Pattern
           Positioned(
             top: 0,
             right: 0,
@@ -119,7 +94,7 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
           ),
 
-          // 2. Solid dark base to guarantee zero subpixel gap at screen bottom
+          // 2. Solid dark base at screen bottom
           Positioned(
             left: 0,
             right: 0,
@@ -128,7 +103,7 @@ class _LoginScreenState extends State<LoginScreen> {
             child: const ColoredBox(color: Color(0xFF14191D)),
           ),
 
-          // 3. Bottom Decorative Tribal Landscape (Bleeds full to bottom, left & right)
+          // 3. Bottom Decorative Tribal Landscape
           Positioned(
             left: 0,
             right: 0,
@@ -171,7 +146,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                             const SizedBox(height: 12),
 
-                            // TribalSetu Brand, Mission Description & Indicators
+                            // TribalSetu Brand & Mission Description
                             const BrandHeader(),
 
                             const SizedBox(height: 16),
@@ -188,101 +163,70 @@ class _LoginScreenState extends State<LoginScreen> {
                               },
                             ),
 
-                            const SizedBox(height: 14),
+                            const SizedBox(height: 20),
 
-                            // Login Method Selector (Mobile Number | Aadhaar)
-                            AuthMethodTabBar(
-                              selectedMethod: _controller.selectedMethod,
-                              onMethodChanged: (method) => _controller.setAuthMethod(method),
+                            // Instruction Label
+                            const Text(
+                              'Sign in to your account',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.textPrimary,
+                                letterSpacing: -0.2,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            const Text(
+                              'Enter your registered email address to receive a 6-digit verification code.',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: AppColors.textSecondary,
+                                height: 1.4,
+                              ),
                             ),
 
-                            const SizedBox(height: 12),
+                            const SizedBox(height: 16),
 
-                            // Input Field (Mobile or Aadhaar)
-                            if (_controller.selectedMethod == AuthMethod.mobile)
-                              MobileInputField(
-                                controller: _controller.mobileController,
-                                hasError: _controller.errorMessage != null,
-                                onSubmitted: _handleContinue,
-                              )
-                            else
-                              AadhaarInputField(
-                                controller: _controller.aadhaarController,
-                                hasError: _controller.errorMessage != null,
-                                onSubmitted: _handleContinue,
-                              ),
+                            // Email Input Field (Step 1)
+                            EmailInputField(
+                              controller: _controller.emailController,
+                              hasError: _controller.errorMessage != null,
+                              onSubmitted: _handleSendCode,
+                            ),
 
                             // Validation / Error Feedback
                             if (_controller.errorMessage != null) ...[
-                              const SizedBox(height: 4),
+                              const SizedBox(height: 6),
                               Padding(
                                 padding: const EdgeInsets.only(left: 4.0),
                                 child: Text(
                                   _controller.errorMessage!,
                                   style: const TextStyle(
                                     color: AppColors.statusError,
-                                    fontSize: 12,
+                                    fontSize: 12.5,
                                     fontWeight: FontWeight.w500,
                                   ),
                                 ),
                               ),
                             ],
 
-                            const SizedBox(height: 14),
+                            const SizedBox(height: 18),
 
-                            // Continue Button
+                            // Send Code Button
                             ContinueButton(
-                              onPressed: _handleContinue,
+                              label: AppStrings.sendCodeButton,
+                              onPressed: _handleSendCode,
                               isLoading: _controller.isLoading,
                               isEnabled: true,
                             ),
 
-                            const SizedBox(height: 8),
-
-                            // OR Divider
-                            const OrDivider(),
-
-                            const SizedBox(height: 8),
-
-                            // DigiLocker Action Card
-                            IdentityProviderCard(
-                              iconWidget: Image.asset(
-                                AssetConstants.digilockerIcon,
-                                fit: BoxFit.contain,
-                                errorBuilder: (context, error, stackTrace) => const Icon(
-                                  Icons.lock_outline_rounded,
-                                  color: AppColors.digilockerBrand,
-                                  size: 28,
-                                ),
-                              ),
-                              title: 'Continue with DigiLocker',
-                              subtitle: 'Access using your DigiLocker account',
-                              onTap: _handleDigiLockerLogin,
-                              isLoading: _controller.isLoading,
-                            ),
-
-                            const SizedBox(height: 10),
-
-                            // APAAR Action Card
-                            IdentityProviderCard(
-                              iconWidget: const Icon(
-                                Icons.school_rounded,
-                                color: Color(0xFF111827),
-                                size: 28,
-                              ),
-                              title: 'Continue with APAAR',
-                              subtitle: 'Using your APAAR ID',
-                              onTap: _handleApaarLogin,
-                              isLoading: _controller.isLoading,
-                            ),
-
                             // Flexible space pushes footer to natural position when keyboard is closed
-                            if (!isKeyboardOpen) const Spacer() else const SizedBox(height: 16),
+                            if (!isKeyboardOpen) const Spacer() else const SizedBox(height: 24),
 
                             // Bottom Institutional Motto
                             Padding(
                               padding: EdgeInsets.only(
-                                top: 8,
+                                top: 12,
                                 bottom: isKeyboardOpen
                                     ? 16
                                     : max(landscapeHeight * 0.55, bottomPadding + 8),

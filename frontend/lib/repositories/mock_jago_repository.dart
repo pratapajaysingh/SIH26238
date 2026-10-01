@@ -62,7 +62,103 @@ class MockJagoRepository implements JagoRepository {
     String answer;
     List<String> sources = ['mota_guidelines'];
 
-    if (queryLower.contains('payment') || queryLower.contains('dbt') || queryLower.contains('paisa')) {
+    if (language == 'sat' || queryLower.contains('ᱡᱚᱦᱟᱨ') || queryLower.contains('ᱥᱟᱱᱛᱟᱲᱤ')) {
+      if (queryLower.contains('payment') || queryLower.contains('dbt') || queryLower.contains('ᱴᱟᱠᱟ')) {
+        answer =
+            'DBT ᱴᱟᱠᱟ ᱵᱷᱮᱡᱟ ᱚᱵᱚᱥᱛᱟ:\n\n'
+            '• ᱴᱟᱠᱟ ᱵᱷᱮᱡᱟ ᱦᱚᱨᱟ: PFMS ᱦᱚᱛᱮᱛᱮ Direct Benefit Transfer (DBT)\n'
+            '• ᱵᱮᱸᱠ ᱮᱠᱟᱣᱩᱱᱴ: ᱟᱫᱷᱟᱨ ᱡᱚᱲᱟᱣ ᱮᱠᱟᱣᱩᱱᱴ ᱵᱤᱰᱟᱹᱣ ᱦᱩᱭ ᱟᱠᱟᱱᱟ\n'
+            '• ᱱᱤᱛᱚᱜᱟᱜ ᱚᱵᱚᱥᱛᱟ: ᱯᱨᱚᱥᱮᱥ ᱟᱠᱟᱱᱟ / ᱵᱷᱮᱡᱟᱜ ᱠᱟᱱᱟ (In Transit)';
+        sources = ['payment_service', 'pfms_adapter'];
+      } else if (queryLower.contains('eligible') || queryLower.contains('ᱡᱚᱜᱽ')) {
+        answer =
+            'ST ᱥᱠᱚᱞᱟᱨᱥᱤᱯ ᱞᱟᱹᱜᱤᱫ ᱯᱟᱛᱨᱚᱛᱟ ᱢᱟᱱᱫᱚᱸᱰ:\n\n'
+            '᱑. ᱢᱟᱹᱱ ᱟᱱ ST (Scheduled Tribe) ᱜᱩᱴ ᱨᱤᱱᱤᱡ ᱦᱩᱭᱩᱜ ᱞᱟᱹᱠᱛᱤᱜ-ᱟ।\n'
+            '᱒. ᱜᱷᱟᱨᱚᱸᱡᱽ ᱨᱮᱱᱟᱜ ᱥᱮᱨᱢᱟᱠᱤᱭᱟᱹ ᱟᱨᱡᱟᱣ ≤ ₹᱒.᱕ ᱞᱟᱠᱷ।\n'
+            '᱓. ᱢᱟᱹᱱ ᱟᱱ ᱤᱱᱥᱴᱤᱴᱭᱩᱴ ᱨᱮ ᱵᱷᱩᱨᱛᱤ ᱛᱟᱦᱮᱸᱱ ᱞᱟᱹᱠᱛᱤᱜ-ᱟ।\n'
+            '᱔. ᱟᱫᱷᱟᱨ ᱥᱟᱶ ᱡᱚᱲᱟᱣ ᱵᱮᱸᱠ ᱮᱠᱟᱣᱩᱱᱴ ᱛᱟᱦᱮᱸᱱ ᱞᱟᱹᱠᱛᱤᱜ-ᱟ।';
+        sources = ['eligibility_service', 'mota_guidelines'];
+      } else if (queryLower.contains('document') || queryLower.contains('ᱠᱟᱜᱚᱡᱽ')) {
+        answer =
+            'ᱥᱠᱚᱞᱟᱨᱥᱤᱯ ᱞᱟᱹᱜᱤᱫ ᱞᱟᱹᱠᱛᱤᱭᱟᱱ ᱠᱟᱜᱚᱡᱽ ᱠᱚ:\n\n'
+            '᱑. ST ᱡᱟᱹᱛᱤ ᱥᱟᱠᱟᱢ (Caste Certificate)\n'
+            '᱒. ᱟᱨᱡᱟᱣ ᱥᱟᱠᱟᱢ (Income Certificate)\n'
+            '᱓. ᱢᱟᱲᱟᱝ ᱥᱮᱨᱢᱟ ᱨᱮᱱᱟᱜ ᱢᱟᱨᱠᱥᱤᱴ\n'
+            '᱔. ᱟᱫᱷᱟᱨ ᱠᱟᱨᱰ\n'
+            '᱕. ᱵᱮᱸᱠ ᱯᱟᱥᱵᱩᱠ\n'
+            '᱖. ᱵᱷᱩᱨᱛᱤ ᱨᱟᱹᱥᱤᱫ';
+        sources = ['document_service'];
+      } else {
+        answer =
+            'ᱡᱚᱦᱟᱨ! ᱤᱧ ᱫᱚ JAGO, ᱟᱹᱫᱤᱵᱟᱹᱥᱤ ᱠᱟᱹᱢᱤᱦᱚᱨᱟ ᱢᱚᱱᱛᱨᱟᱲᱚᱭ (MoTA) ᱨᱮᱱ AI ᱥᱠᱚᱞᱟᱨᱥᱤᱯ ᱜᱚᱲᱚᱭᱤᱡ। '
+            'ᱟᱢᱟᱜ ᱟᱵᱮᱫᱚᱱ, ᱯᱟᱛᱨᱚᱛᱟ, ᱠᱟᱜᱚᱡᱽ, ᱟᱨ DBT ᱴᱟᱠᱟ ᱵᱟᱵᱚᱛ ᱠᱩᱠᱞᱤ ᱠᱩᱞᱤ ᱫᱟᱲᱮᱭᱟᱜ-ᱟᱢ।';
+        sources = ['jago_knowledge_base'];
+      }
+    } else if (language == 'or' || queryLower.contains('ନମସ୍କାର') || queryLower.contains('ଓଡ଼ିଆ')) {
+      if (queryLower.contains('payment') || queryLower.contains('dbt') || queryLower.contains('ଦେୟ')) {
+        answer =
+            'DBT ଦେୟ ସ୍ଥିତି:\n\n'
+            '• ବିତରଣ ମୋଡ୍: PFMS ମାଧ୍ୟମରେ Direct Benefit Transfer (DBT)\n'
+            '• ବ୍ୟାଙ୍କ ଖାତା: ଆଧାର-ଲିଙ୍କ୍ ହୋଇଥିବା ଖାତା ଯାଞ୍ଚ ହୋଇଛି\n'
+            '• ବର୍ତ୍ତମାନ ସ୍ଥିତି: ପ୍ରକ୍ରିୟାକରଣ ଚାଲିଛି / ପ୍ରଦାନ କରାଯାଉଛି (In Transit)';
+        sources = ['payment_service', 'pfms_adapter'];
+      } else if (queryLower.contains('eligible') || queryLower.contains('ଯୋଗ୍ୟ')) {
+        answer =
+            'ST ଛାତ୍ରବୃତ୍ତି ପାଇଁ ଯୋଗ୍ୟତା ମାନଦଣ୍ଡ:\n\n'
+            '୧. ସ୍ୱୀକୃତିପ୍ରାପ୍ତ ଅନୁସୂଚିତ ଜନଜାତି (ST) ସମ୍ପ୍ରଦାୟର ହୋଇଥିବା ଆବଶ୍ୟକ।\n'
+            '୨. ପରିବାରର ବାର୍ଷିକ ଆୟ ସୀମା ≤ ₹୨.୫ ଲକ୍ଷ।\n'
+            '୩. ସ୍ୱୀକୃତିପ୍ରାପ୍ତ ଅନୁଷ୍ଠାନରେ ପଢୁଥିବା ଆବଶ୍ୟକ।\n'
+            '୪. ସକ୍ରିୟ ଆଧାର-ସିଡେଡ୍ ବ୍ୟାଙ୍କ ଖାତା ରହିବା ଆବଶ୍ୟକ।';
+        sources = ['eligibility_service', 'mota_guidelines'];
+      } else if (queryLower.contains('document') || queryLower.contains('ଦଲିଲ')) {
+        answer =
+            'ଆବେଦନ ପାଇଁ ଆବଶ୍ୟକ ଦଲିଲଗୁଡ଼ିକ:\n\n'
+            '୧. ବୈଧ ST ଜାତି ପ୍ରମାଣପତ୍ର\n'
+            '୨. ସକ୍ଷମ କର୍ତ୍ତୃପକ୍ଷଙ୍କ ଆୟ ପ୍ରମାଣପତ୍ର\n'
+            '୩. ପୂର୍ବ ବର୍ଷର ଶିକ୍ଷାଗତ ମାର୍କସିଟ୍\n'
+            '୪. ଆଧାର କାର୍ଡ\n'
+            '୫. ବ୍ୟାଙ୍କ ପାସବୁକ୍\n'
+            '୬. ଅନୁଷ୍ଠାନ ନାମଲେଖା ରସିଦ';
+        sources = ['document_service'];
+      } else {
+        answer =
+            'ଜୋହାର / ନମସ୍କାର! ମୁଁ JAGO, ଜନଜାତି ବ୍ୟାପାର ମନ୍ତ୍ରଣାଳୟ (MoTA) ର ଆପଣଙ୍କର AI ଛାତ୍ରବୃତ୍ତି ସହାୟକ। '
+            'ଆପଣଙ୍କର ଆବେଦନ, ଯୋଗ୍ୟତା, ଦଲିଲ ଏବଂ DBT ଦେୟ ସମ୍ପର୍କରେ କିଛି ବି ପଚାରିପାରିବେ।';
+        sources = ['jago_knowledge_base'];
+      }
+    } else if (language == 'hi' || queryLower.contains('नमस्ते') || queryLower.contains('छात्रवृत्ति')) {
+      if (queryLower.contains('payment') || queryLower.contains('dbt') || queryLower.contains('भुगतान') || queryLower.contains('पैसा')) {
+        answer =
+            'DBT भुगतान स्थिति:\n\n'
+            '• संवितरण मोड: PFMS के माध्यम से प्रत्यक्ष लाभ अंतरण (DBT)\n'
+            '• बैंक खाता: आधार-लिंक्ड बैंक खाता सत्यापित\n'
+            '• वर्तमान स्थिति: संसाधित / लाभार्थी को प्रेषित (In Transit)';
+        sources = ['payment_service', 'pfms_adapter'];
+      } else if (queryLower.contains('eligible') || queryLower.contains('पात्र')) {
+        answer =
+            'एसटी छात्रवृत्ति के लिए पात्रता मानदंड:\n\n'
+            '1. मान्यता प्राप्त अनुसूचित जनजाति (ST) समुदाय से संबंधित होना चाहिए।\n'
+            '2. वार्षिक पारिवारिक आय ₹2.5 लाख से कम या बराबर होनी चाहिए।\n'
+            '3. मान्यता प्राप्त संस्थान में अध्ययनरत होना चाहिए।\n'
+            '4. आधार से जुड़ा बैंक खाता अनिवार्य है।';
+        sources = ['eligibility_service', 'mota_guidelines'];
+      } else if (queryLower.contains('document') || queryLower.contains('दस्तावेज़')) {
+        answer =
+            'आवेदन के लिए आवश्यक दस्तावेज़:\n\n'
+            '1. वैध एसटी जाति प्रमाण पत्र (डिजीलॉकर से)\n'
+            '2. सक्षम प्राधिकारी आय प्रमाण पत्र\n'
+            '3. पिछले वर्ष की अंकतालिका\n'
+            '4. आधार कार्ड\n'
+            '5. बैंक पासबुक\n'
+            '6. संस्थान शुल्क रसीद';
+        sources = ['document_service'];
+      } else {
+        answer =
+            'नमस्ते! मैं JAGO हूँ, जनजातीय कार्य मंत्रालय (MoTA) के लिए आपका AI छात्रवृत्ति सहायक। '
+            'आप मुझसे योजनाओं, पात्रता, दस्तावेज़ों, आवेदन ट्रैकिंग या डीबीटी भुगतान के बारे में पूछ सकते हैं।';
+        sources = ['jago_knowledge_base'];
+      }
+    } else if (queryLower.contains('payment') || queryLower.contains('dbt') || queryLower.contains('paisa')) {
       answer =
           'DBT Payment Status:\n\n'
           '• Disbursement Mode: Direct Benefit Transfer (DBT) via PFMS\n'

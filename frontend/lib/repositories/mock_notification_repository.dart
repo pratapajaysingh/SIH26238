@@ -96,6 +96,11 @@ class MockNotificationRepository implements NotificationRepository {
     _notifications = _createInitialNotifications();
   }
 
+  /// Injects a notification into mock storage (e.g. from admin outreach).
+  static void addNotification(NotificationItem item) {
+    _notifications.insert(0, item);
+  }
+
   @override
   Future<List<NotificationItem>> getNotifications() async {
     if (latency > Duration.zero) {

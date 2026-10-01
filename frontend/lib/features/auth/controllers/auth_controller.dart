@@ -1,54 +1,52 @@
 import 'package:flutter/material.dart';
-import '../../../core/enums/auth_method_enum.dart';
 import '../../../core/enums/role_enum.dart';
 import '../../../core/utils/validators.dart';
 import '../../../models/auth_session.dart';
 import '../../../repositories/auth_repository.dart';
 
-/// AuthController manages UI state for student registration and login flows.
-/// Fully decouples UI presentation from backend API/mock communication.
+/// AuthController manages UI state for student login and OTP verification flows.
+/// Fully decoupled from backend API/mock communication.
 class AuthController extends ChangeNotifier {
   final AuthRepository _authRepository;
 
-  AuthController({required AuthRepository authRepository})
-      : _authRepository = authRepository {
-    mobileController.addListener(_onInputChanged);
-    aadhaarController.addListener(_onInputChanged);
+  AuthController({
+    required AuthRepository authRepository,
+    AuthSession? initialSession,
+  })  : _authRepository = authRepository,
+        _session = initialSession {
+    emailController.addListener(_onInputChanged);
+    otpController.addListener(_onInputChanged);
   }
 
   // State Properties
   UserRole _selectedRole = UserRole.student;
-  AuthMethod _selectedMethod = AuthMethod.mobile;
   bool _isLoading = false;
   String? _errorMessage;
   String? _successMessage;
   bool _isOtpSent = false;
+  int _expiresIn = 300;
+  int _retryAfterSeconds = 0;
   AuthSession? _session;
 
   // Text Controllers
-  final TextEditingController mobileController = TextEditingController();
-  final TextEditingController aadhaarController = TextEditingController();
+  final TextEditingController emailController = TextEditingController();
   final TextEditingController otpController = TextEditingController();
 
   // Getters
   UserRole get selectedRole => _selectedRole;
-  AuthMethod get selectedMethod => _selectedMethod;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
   String? get successMessage => _successMessage;
   bool get isOtpSent => _isOtpSent;
+  int get expiresIn => _expiresIn;
+  int get retryAfterSeconds => _retryAfterSeconds;
   AuthSession? get session => _session;
   bool get isAuthenticated => _session != null;
 
   bool get canContinue {
     if (_isLoading) return false;
-    if (_selectedMethod == AuthMethod.mobile) {
-      final text = mobileController.text.trim();
-      return text.length == 10;
-    } else {
-      final text = aadhaarController.text.trim();
-      return text.length == 12;
-    }
+    final text = emailController.text.trim();
+    return text.isNotEmpty && text.contains('@');
   }
 
   void _onInputChanged() {
@@ -67,87 +65,55 @@ class AuthController extends ChangeNotifier {
     notifyListeners();
   }
 
-  void setAuthMethod(AuthMethod method) {
-    if (_selectedMethod == method) return;
-    _selectedMethod = method;
-    _errorMessage = null;
-    notifyListeners();
-  }
-
   void clearError() {
     _errorMessage = null;
     notifyListeners();
   }
 
-  /// Handles primary action on Continue button
-  Future<bool> submitContinue() async {
+  /// Sends OTP to the provided email address (Step 1).
+  Future<bool> submitContinue() async => requestOtp();
+
+  /// Requests a one-time passcode for the email in [emailController].
+  Future<bool> requestOtp() async {
     _errorMessage = null;
     _successMessage = null;
 
-    if (_selectedMethod == AuthMethod.mobile) {
-      final mobile = mobileController.text.trim();
-      final validationError = Validators.validateMobile(mobile);
-      if (validationError != null) {
-        _errorMessage = validationError;
+    final email = emailController.text.trim();
+    final validationError = Validators.validateEmail(email);
+    if (validationError != null) {
+      _errorMessage = validationError;
+      notifyListeners();
+      return false;
+    }
+
+    _setLoading(true);
+    try {
+      final response = await _authRepository.requestOtp(email);
+      _setLoading(false);
+
+      if (response.success) {
+        _isOtpSent = true;
+        _expiresIn = response.data?.expiresIn ?? 300;
+        _successMessage = response.message;
         notifyListeners();
-        return false;
-      }
-
-      _setLoading(true);
-      try {
-        final response = await _authRepository.sendMobileOtp(mobile);
-        _setLoading(false);
-
-        if (response.success) {
-          _isOtpSent = true;
-          _successMessage = response.message;
-          notifyListeners();
-          return true;
-        } else {
-          _errorMessage = response.message;
-          notifyListeners();
-          return false;
+        return true;
+      } else {
+        _errorMessage = response.message;
+        if (response.data != null && response.data!.expiresIn > 0) {
+          _retryAfterSeconds = response.data!.expiresIn;
         }
-      } catch (e) {
-        _setLoading(false);
-        _errorMessage = e.toString().replaceFirst('Exception: ', '');
         notifyListeners();
         return false;
       }
-    } else {
-      final aadhaar = aadhaarController.text.trim();
-      final validationError = Validators.validateAadhaar(aadhaar);
-      if (validationError != null) {
-        _errorMessage = validationError;
-        notifyListeners();
-        return false;
-      }
-
-      _setLoading(true);
-      try {
-        final response = await _authRepository.sendAadhaarOtp(aadhaar);
-        _setLoading(false);
-
-        if (response.success) {
-          _isOtpSent = true;
-          _successMessage = response.message;
-          notifyListeners();
-          return true;
-        } else {
-          _errorMessage = response.message;
-          notifyListeners();
-          return false;
-        }
-      } catch (e) {
-        _setLoading(false);
-        _errorMessage = e.toString().replaceFirst('Exception: ', '');
-        notifyListeners();
-        return false;
-      }
+    } catch (_) {
+      _setLoading(false);
+      _errorMessage = 'Unable to connect to server. Please check your internet connection.';
+      notifyListeners();
+      return false;
     }
   }
 
-  /// Verifies OTP code
+  /// Verifies the OTP code for the email in [emailController] (Step 2).
   Future<bool> verifyOtp(String otp) async {
     final validationError = Validators.validateOtp(otp);
     if (validationError != null) {
@@ -158,61 +124,13 @@ class AuthController extends ChangeNotifier {
 
     _setLoading(true);
     try {
-      if (_selectedMethod == AuthMethod.mobile) {
-        final response = await _authRepository.verifyMobileOtp(
-          mobileController.text.trim(),
-          otp.trim(),
-        );
-        _setLoading(false);
-
-        if (response.success && response.data != null) {
-          _session = response.data;
-          _isOtpSent = false;
-          _successMessage = response.message;
-          notifyListeners();
-          return true;
-        } else {
-          _errorMessage = response.message;
-          notifyListeners();
-          return false;
-        }
-      } else {
-        final response = await _authRepository.verifyAadhaarOtp(
-          aadhaarController.text.trim(),
-          otp.trim(),
-        );
-        _setLoading(false);
-
-        if (response.success && response.data != null) {
-          _session = response.data;
-          _isOtpSent = false;
-          _successMessage = response.message;
-          notifyListeners();
-          return true;
-        } else {
-          _errorMessage = response.message;
-          notifyListeners();
-          return false;
-        }
-      }
-    } catch (e) {
-      _setLoading(false);
-      _errorMessage = e.toString().replaceFirst('Exception: ', '');
-      notifyListeners();
-      return false;
-    }
-  }
-
-  /// Initiates DigiLocker integration authentication
-  Future<bool> loginWithDigiLocker() async {
-    _setLoading(true);
-    _errorMessage = null;
-    try {
-      final response = await _authRepository.loginWithDigiLocker();
+      final email = emailController.text.trim();
+      final response = await _authRepository.verifyOtp(email, otp.trim());
       _setLoading(false);
 
       if (response.success && response.data != null) {
         _session = response.data;
+        _isOtpSent = false;
         _successMessage = response.message;
         notifyListeners();
         return true;
@@ -221,45 +139,20 @@ class AuthController extends ChangeNotifier {
         notifyListeners();
         return false;
       }
-    } catch (e) {
+    } catch (_) {
       _setLoading(false);
-      _errorMessage = e.toString().replaceFirst('Exception: ', '');
+      _errorMessage = 'Unable to connect to server. Please check your internet connection.';
       notifyListeners();
       return false;
     }
   }
 
-  /// Initiates APAAR ID authentication
-  Future<bool> loginWithApaar([String apaarId = '']) async {
-    _setLoading(true);
-    _errorMessage = null;
-    try {
-      final response = await _authRepository.loginWithApaar(apaarId);
-      _setLoading(false);
-
-      if (response.success && response.data != null) {
-        _session = response.data;
-        _successMessage = response.message;
-        notifyListeners();
-        return true;
-      } else {
-        _errorMessage = response.message;
-        notifyListeners();
-        return false;
-      }
-    } catch (e) {
-      _setLoading(false);
-      _errorMessage = e.toString().replaceFirst('Exception: ', '');
-      notifyListeners();
-      return false;
-    }
+  /// Resends the OTP code to the current email.
+  Future<bool> resendOtp() async {
+    return requestOtp();
   }
 
-  void _setLoading(bool val) {
-    _isLoading = val;
-    notifyListeners();
-  }
-
+  /// Returns from Step 2 to Step 1 to allow editing the email address.
   void resetOtpState() {
     _isOtpSent = false;
     otpController.clear();
@@ -268,12 +161,33 @@ class AuthController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Logs out the active user, clearing persisted tokens and session.
+  Future<void> logout() async {
+    _setLoading(true);
+    try {
+      await _authRepository.logout();
+    } finally {
+      _session = null;
+      _isOtpSent = false;
+      emailController.clear();
+      otpController.clear();
+      _errorMessage = null;
+      _successMessage = null;
+      _setLoading(false);
+      notifyListeners();
+    }
+  }
+
+  void _setLoading(bool val) {
+    _isLoading = val;
+    notifyListeners();
+  }
+
   @override
   void dispose() {
-    mobileController.removeListener(_onInputChanged);
-    aadhaarController.removeListener(_onInputChanged);
-    mobileController.dispose();
-    aadhaarController.dispose();
+    emailController.removeListener(_onInputChanged);
+    otpController.removeListener(_onInputChanged);
+    emailController.dispose();
     otpController.dispose();
     super.dispose();
   }

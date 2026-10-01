@@ -44,6 +44,30 @@ DEFAULT_SUGGESTIONS = {
         "क्या मैं पात्र हूँ?",
         "कौन सी छात्रवृत्ति योजनाएं उपलब्ध हैं?",
     ],
+    "sat": [
+        "ᱤᱧᱟᱜ ᱟᱵᱮᱫᱚᱱ ᱚᱵᱚᱥᱛᱟ ᱵᱤᱰᱟᱹᱣ ᱢᱮ",
+        "ᱤᱧᱟᱜ ᱟᱵᱮᱫᱚᱱ ᱪᱮᱫᱟᱜ ᱵᱟᱹᱠᱤ ᱢᱮᱱᱟᱜ-ᱟ?",
+        "ᱪᱮᱫ ᱠᱟᱜᱚᱡᱽ ᱠᱚᱢ ᱢᱮᱱᱟᱜ-ᱟ?",
+        "ᱤᱧᱟᱜ DBT ᱴᱟᱠᱟ ᱚᱵᱚᱥᱛᱟ ᱪᱮᱫ?",
+        "ᱪᱮᱫ ᱤᱧ ᱡᱚᱜᱽ ᱜᱮᱭᱟ?",
+        "ᱪᱮᱫ ᱥᱠᱚᱞᱟᱨᱥᱤᱯ ᱡᱚᱡᱚᱱᱟ ᱠᱚ ᱢᱮᱱᱟᱜ-ᱟ?",
+    ],
+    "or": [
+        "ମୋ ଆବେଦନ ସ୍ଥିତି ଯାଞ୍ଚ କରନ୍ତୁ",
+        "ମୋ ଆବେଦନ କାହିଁକି ବିଚାରାଧୀନ ଅଛି?",
+        "କେଉଁ ଦଲିଲଗୁଡ଼ିକ ବାକି ଅଛି?",
+        "ମୋର DBT ଦେୟ ସ୍ଥିତି କଣ?",
+        "ମୁଁ କଣ ଯୋଗ୍ୟ ଅଟେ?",
+        "କେଉଁ ଛାତ୍ରବୃତ୍ତି ଯୋଜନା ଉପଲବ୍ଧ ଅଛି?",
+    ],
+    "gon": [
+        "नावा अर्जी रो हाल-चाल चोख कीम",
+        "नावा अर्जी बारे ते कबर सीम",
+        "बतले कागजात पाहिजेल?",
+        "नावा DBT पयका रो हाल-चाल बतले?",
+        "नना योजना काजे पात्र आंदोन बा?",
+        "बतले छात्रवृत्ति योजना मंत?",
+    ],
 }
 
 # Multilingual response templates (Deterministic fallback)
@@ -82,6 +106,57 @@ MULTILINGUAL_TEMPLATES = {
         "schemes_summary": "जनजातीय कार्य मंत्रालय (MoTA) की 5 प्रमुख योजनाएं उपलब्ध हैं: {schemes}। विस्तृत जानकारी के लिए किसी भी योजना के बारे में पूछें।",
         "greeting": "नमस्ते! मैं JAGO हूँ, जनजातीय कार्य मंत्रालय (MoTA) के लिए आपका AI छात्रवृत्ति सहायक। आज मैं आपकी छात्रवृत्ति यात्रा में क्या सहायता कर सकता हूँ?",
     },
+    "sat": {
+        "app_id_required": "ᱫᱟᱭᱟ ᱠᱟᱛᱮ ᱟᱢᱟᱜ ᱟᱵᱮᱫᱚᱱ ID ᱮᱢ ᱢᱮ ᱡᱟᱛᱮ ᱤᱧ ᱱᱚᱣᱟ ᱨᱮᱱᱟᱜ ᱚᱵᱚᱥᱛᱟ ᱧᱮᱞ ᱫᱟᱲᱮᱭᱟᱜ-ᱟ।",
+        "app_not_found": "ID '{app_id}' ᱛᱮ ᱡᱟᱦᱟᱱ ᱟᱵᱮᱫᱚᱱ ᱵᱟᱝ ᱧᱟᱢ ᱞᱮᱱᱟ। ᱫᱟᱭᱟ ᱠᱟᱛᱮ ID ᱵᱤᱰᱟᱹᱣ ᱠᱟᱛᱮ ᱟᱨᱦᱚᱸ ᱪᱮᱥᱴᱟᱭ ᱢᱮ।",
+        "app_status": "ᱟᱢᱟᱜ ᱥᱠᱚᱞᱟᱨᱥᱤᱯ ᱟᱵᱮᱫᱚᱱ ({app_id}) ᱱᱤᱛᱚᱜ '{status}' ᱚᱵᱚᱥᱛᱟ ᱨᱮ ᱢᱮᱱᱟᱜ-ᱟ।",
+        "deficiency_none": "ᱱᱟᱯᱟᱭ ᱠᱷᱚᱵᱚᱨ! ᱟᱵᱮᱫᱚᱱ {app_id} ᱨᱮ ᱡᱟᱦᱟᱱ ᱠᱟᱜᱚᱡᱽ ᱠᱚᱢ ᱵᱟᱹᱱᱩᱜ-ᱟ।",
+        "deficiency_found": "ᱟᱵᱮᱫᱚᱱ {app_id} ᱨᱮ {count} ᱜᱚᱴᱟᱝ ᱠᱟᱜᱚᱡᱽ/ᱠᱟᱹᱢᱤ ᱵᱟᱹᱠᱤ ᱢᱮᱱᱟᱜ-ᱟ ᱡᱟᱦᱟᱸ ᱨᱮ ᱫᱷᱮᱭᱟᱱ ᱮᱢ ᱞᱟᱹᱠᱛᱤ ᱠᱟᱱᱟ।",
+        "payment_status": "ᱟᱢᱟᱜ DBT ᱴᱟᱠᱟ ᱵᱷᱮᱡᱟ ᱚᱵᱚᱥᱛᱟ ᱫᱚ '{status}' ᱠᱟᱱᱟ: {message} (ᱥᱤᱢᱩᱞᱮᱴᱮᱰ ᱯᱨᱚᱴᱚᱴᱟᱭᱤᱯ ᱢᱳᱰ)",
+        "payment_id_required": "ᱟᱢᱟᱜ DBT ᱴᱟᱠᱟ ᱵᱷᱮᱡᱟ ᱚᱵᱚᱥᱛᱟ ᱧᱮᱞ ᱞᱟᱹᱜᱤᱫ ᱫᱟᱭᱟ ᱠᱟᱛᱮ ᱟᱢᱟᱜ ᱟᱵᱮᱫᱚᱱ ID ᱮᱢ ᱢᱮ।",
+        "student_not_found": "ᱯᱟᱹᱴᱷᱩᱣᱟᱹ ᱨᱮᱠᱚᱨᱰ '{student_id}' ᱵᱟᱝ ᱧᱟᱢ ᱞᱮᱱᱟ।",
+        "scholarship_not_found": "ᱥᱠᱚᱞᱟᱨᱥᱤᱯ ᱡᱚᱡᱚᱱᱟ '{scholarship_id}' ᱵᱟᱝ ᱧᱟᱢ ᱞᱮᱱᱟ।",
+        "eligible": "ᱢᱚᱠ ᱯᱟᱛᱨᱚᱛᱟ ᱚᱨᱡᱚ: ᱟᱢ ᱱᱚᱣᱟ ᱡᱚᱡᱚᱱᱟ ᱞᱟᱹᱜᱤᱫ ᱡᱚᱜᱽ ᱜᱮᱭᱟ ({reasons})। ᱱᱳᱴ: ᱱᱚᱣᱟ ᱫᱚ ᱢᱤᱫ ᱯᱨᱚᱴᱚᱴᱟᱭᱤᱯ ᱵᱤᱰᱟᱹᱣ ᱠᱟᱱᱟ।",
+        "not_eligible": "ᱢᱚᱠ ᱯᱟᱛᱨᱚᱛᱟ ᱚᱨᱡᱚ: ᱟᱢ ᱱᱤᱛᱚᱜ ᱱᱚᱣᱟ ᱡᱚᱡᱚᱱᱟ ᱞᱟᱹᱜᱤᱫ ᱡᱚᱜᱽ ᱵᱟᱹᱱᱩᱜ ᱢᱮᱭᱟ ({reasons})।",
+        "unknown": "ᱤᱧ ᱵᱟᱹᱧ ᱵᱩᱡᱷᱟᱹᱣ ᱫᱟᱲᱮᱭᱟᱫ-ᱟ ᱟᱢ ᱪᱮᱫ ᱠᱷᱚᱡᱚᱜ ᱠᱟᱱᱟ। JAGO ᱫᱚ ᱟᱢᱟᱜ ᱥᱠᱚᱞᱟᱨᱥᱤᱯ ᱟᱵᱮᱫᱚᱱ ᱚᱵᱚᱥᱛᱟ, ᱠᱟᱜᱚᱡᱽ ᱯᱚᱛᱨᱚ, DBT ᱴᱟᱠᱟ, ᱟᱨ ᱯᱟᱛᱨᱚᱛᱟ ᱵᱤᱰᱟᱹᱣ ᱨᱮ ᱜᱚᱲᱚ ᱮᱢ ᱫᱟᱲᱮᱭᱟᱜ-ᱟ।",
+        "documents_guidance": "ᱡᱚᱡᱚᱱᱟ '{scheme}' ᱞᱟᱹᱜᱤᱫ ᱱᱚᱣᱟ ᱠᱚ ᱠᱟᱜᱚᱡᱽ ᱞᱟᱹᱠᱛᱤᱜ-ᱟ: {doc_list}।",
+        "schemes_summary": "ᱟᱹᱫᱤᱵᱟᱹᱥᱤ ᱢᱚᱱᱛᱨᱟᱲᱚᱭ (MoTA) ᱨᱮᱱᱟᱜ ᱕ ᱜᱚᱴᱟᱝ ᱢᱩᱬᱩᱛ ᱥᱠᱚᱞᱟᱨᱥᱤᱯ ᱡᱚᱡᱚᱱᱟ ᱢᱮᱱᱟᱜ-ᱟ: {schemes}।",
+        "greeting": "ᱡᱚᱦᱟᱨ! ᱤᱧ ᱫᱚ JAGO, ᱟᱹᱫᱤᱵᱟᱹᱥᱤ ᱠᱟᱹᱢᱤᱦᱚᱨᱟ ᱢᱚᱱᱛᱨᱟᱲᱚᱭ (MoTA) ᱨᱮᱱ ᱟᱢᱤᱡ AI ᱥᱠᱚᱞᱟᱨᱥᱤᱯ ᱜᱚᱲᱚᱭᱤᱡ। ᱛᱮᱦᱮᱧ ᱤᱧ ᱟᱢᱟᱜ ᱪᱮᱫ ᱜᱚᱲᱚᱧ ᱮᱢ ᱫᱟᱲᱮᱭᱟᱜ-ᱟ?",
+    },
+    "or": {
+        "app_id_required": "ଦୟାକରି ଆପଣଙ୍କର ଆବେଦନ ID (Application ID) ପ୍ରଦାନ କରନ୍ତୁ ଯାହାଦ୍ୱାରା ମୁଁ ଏହାର ସ୍ଥିତି ଯାଞ୍ଚ କରିପାରିବି।",
+        "app_not_found": "ID '{app_id}' ସହିତ କୌଣସି ଆବେଦନ ମିଳିଲା ନାହିଁ। ଦୟାକରି ID ଯାଞ୍ଚ କରି ପୁନଃ ଚେଷ୍ଟା କରନ୍ତୁ।",
+        "app_status": "ଆପଣଙ୍କର ଛାତ୍ରବୃତ୍ତି ଆବେଦନ ({app_id}) ବର୍ତ୍ତମାନ '{status}' ସ୍ଥିତିରେ ଅଛି।",
+        "deficiency_none": "ଖୁସି ଖବର! ଆବେଦନ {app_id} ରେ କୌଣସି ତ୍ରୁଟି କିମ୍ବା ଅନୁପସ୍ଥିତ ଦଲିଲ ନାହିଁ।",
+        "deficiency_found": "ଆବେଦନ {app_id} ରେ {count} ଟି ଦଲିଲ ତ୍ରୁଟି ରହିଛି ଯାହା ତୁରନ୍ତ ସମାଧାନ ଆବଶ୍ୟକ।",
+        "payment_status": "ଆପଣଙ୍କର DBT ଦେୟ ସ୍ଥିତି '{status}' ଅଟେ: {message} (ସିମୁଲେଟେଡ୍ ପ୍ରୋଟୋଟାଇପ୍ ମୋଡ୍)",
+        "payment_id_required": "ଆପଣଙ୍କର DBT ବିତରଣ ଏବଂ ଦେୟ ସ୍ଥିତି ଯାଞ୍ଚ କରିବା ପାଇଁ ଦୟାକରି ଆପଣଙ୍କର ଆବେଦନ ID ପ୍ରଦାନ କରନ୍ତୁ।",
+        "student_not_found": "ଛାତ୍ର ରେକର୍ଡ '{student_id}' ମିଳିଲା ନାହିଁ।",
+        "scholarship_not_found": "ଛାତ୍ରବୃତ୍ତି ଯୋଜନା '{scholarship_id}' ମିଳିଲା ନାହିଁ।",
+        "eligible": "ମକ୍ ଯୋଗ୍ୟତା ଫଳାଫଳ: ଆପଣ ଏହି ଯୋଜନା ପାଇଁ ଯୋଗ୍ୟ ମନେହେଉଛନ୍ତି ({reasons})। ସୂଚନା: ଏହା ଏକ ପରୀକ୍ଷାମୂଳକ ମୂଲ୍ୟାଙ୍କନ।",
+        "not_eligible": "ମକ୍ ଯୋଗ୍ୟତା ଫଳାଫଳ: ଆପଣ ବର୍ତ୍ତମାନ ଏହି ଯୋଜନାର ମାନଦଣ୍ଡ ପୂରଣ କରୁନାହାଁନ୍ତି ({reasons})।",
+        "unknown": "କ୍ଷମା କରିବେ, ଆପଣ କଣ ଜାଣିବାକୁ ଚାହୁଁଛନ୍ତି ମୁଁ ବୁଝିପାରିଲି ନାହିଁ। JAGO ଆପଣଙ୍କୁ ଆବେଦନ ସ୍ଥିତି, ଦଲିଲ ଯାଞ୍ଚ, DBT ଦେୟ ଏବଂ ଯୋଗ୍ୟତା ମୂଲ୍ୟାଙ୍କନରେ ସାହାଯ୍ୟ କରିପାରିବ।",
+        "documents_guidance": "ଯୋଜନା '{scheme}' ପାଇଁ ସାଧାରଣତଃ ଆବଶ୍ୟକ: {doc_list}। ସୂଚନା: ସଠିକ୍ ଆବଶ୍ୟକତା ସରକାରୀ ନିର୍ଦ୍ଦେଶାବଳୀ ଉପରେ ନିର୍ଭର କରେ।",
+        "schemes_summary": "ଜନଜାତି ବ୍ୟାପାର ମନ୍ତ୍ରଣାଳୟ (MoTA) ର ୫ଟି ପ୍ରମୁଖ ଛାତ୍ରବୃତ୍ତି ଯୋଜନା ଉପଲବ୍ଧ: {schemes}। ବିସ୍ତୃତ ସୂଚନା ପାଇଁ ଯେକୌଣସି ଯୋଜନା ବିଷୟରେ ପଚାରନ୍ତୁ।",
+        "greeting": "ଜୋହାର / ନମସ୍କାର! ମୁଁ JAGO, ଜନଜାତି ବ୍ୟାପାର ମନ୍ତ୍ରଣାଳୟ (MoTA) ର ଆପଣଙ୍କର AI ଛାତ୍ରବୃତ୍ତି ସହାୟକ। ଆଜି ମୁଁ ଆପଣଙ୍କୁ କିପରି ସାହାଯ୍ୟ କରିପାରିବି?",
+    },
+    "gon": {
+        "app_id_required": "दया कीसी मीवा अर्जी ID (Application ID) सीम जेना वत्ती नना देना हाल-चाल चोख कीसकन।",
+        "app_not_found": "ID '{app_id}' रो अर्जी हिल्ले पुट्टो। दया कीसी ID चोख कीसी मल्ले कोशिश कीम।",
+        "app_status": "मीवा छात्रवृत्ति अर्जी ({app_id}) इंगो '{status}' हाल-चाल ते मंता।",
+        "deficiency_none": "बेस कबर! अर्जी {app_id} ते बतले कागजात रो कमी हिल्ले।",
+        "deficiency_found": "अर्जी {app_id} ते {count} कागजात रो कमी मंता जेना दुरुस्त कियाना मंता।",
+        "payment_status": "मीवा DBT पयका रो हाल-चाल '{status}' मंता: {message} (सिमुलेटेड मोड)",
+        "payment_id_required": "मीवा DBT पयका रो हाल-चाल चोख कियाना काजे मीवा अर्जी ID सीम।",
+        "student_not_found": "विद्यार्थी रिकॉर्ड '{student_id}' हिल्ले पुट्टो।",
+        "scholarship_not_found": "योजना '{scholarship_id}' हिल्ले पुट्टो।",
+        "eligible": "पात्रता नतीजा: मीमा इद योजना काजे पात्र मंतीर ({reasons})।",
+        "not_eligible": "पात्रता नतीजा: मीमा इद योजना काजे पात्र हिल्लेतीर ({reasons})।",
+        "unknown": "नना समजो माकन। JAGO मीवा छात्रवृत्ति अर्जी, कागजात, DBT पयका, अनि योजना रो हाल-चाल चोख कियाना ते मदद कींत।",
+        "documents_guidance": "योजना '{scheme}' काजे इद कागजात पाहिजेल: {doc_list}।",
+        "schemes_summary": "जनजातीय कार्य मंत्रालय (MoTA) रो ५ प्रमुख योजना मंत: {schemes}।",
+        "greeting": "सेवा जोहार! नना JAGO आंदोन, जनजातीय कार्य मंत्रालय (MoTA) रो AI छात्रवृत्ति साथी। नना मीवा बतले मदद कीकन?",
+    },
 }
 
 # Document requirements by scheme (for DOCUMENTS_GUIDANCE intent)
@@ -100,9 +175,33 @@ def _get_lang(request: JagoMessageRequest) -> str:
         lang = request.context.get("language", "en")
         if lang in MULTILINGUAL_TEMPLATES:
             return lang
-    if request.message and re.search(r"[\u0900-\u097F]", request.message):
-        return "hi"
+        lang_lower = str(lang).lower().strip()
+        if lang_lower in {"santali", "sat", "ol chiki", "ol-chiki", "ol_chiki"}:
+            return "sat"
+        if lang_lower in {"odia", "or", "ori", "oriya"}:
+            return "or"
+        if lang_lower in {"gondi", "gon"}:
+            return "gon"
+        if lang_lower in {"hindi", "hi", "hinglish"}:
+            return "hi"
+
+    if request.message:
+        # Check Ol Chiki unicode range: \u1C50 - \u1C7F
+        if re.search(r"[\u1C50-\u1C7F]", request.message):
+            return "sat"
+        # Check Odia unicode range: \u0B00 - \u0B7F
+        if re.search(r"[\u0B00-\u0B7F]", request.message):
+            return "or"
+        # Check Devanagari range: \u0900 - \u097F
+        if re.search(r"[\u0900-\u097F]", request.message):
+            return "hi"
+
     return "en"
+
+
+def _s(lang: str) -> list[str]:
+    """Get suggestions list for a language with fallback to English."""
+    return DEFAULT_SUGGESTIONS.get(lang, DEFAULT_SUGGESTIONS["en"])
 
 
 def _t(lang: str, key: str, **kwargs) -> str:
@@ -400,7 +499,7 @@ def _process_jago_message_deterministic(
                 message=_t(lang, "app_id_required"),
                 data={"error": "APPLICATION_ID_REQUIRED"},
                 source="jago_orchestration",
-                suggestions=[DEFAULT_SUGGESTIONS[lang][0]],
+                suggestions=[_s(lang)[0]],
                 language=lang,
             )
 
@@ -412,7 +511,7 @@ def _process_jago_message_deterministic(
                 message=_t(lang, "app_not_found", app_id=app_id),
                 data={"application_id": app_id, "found": False},
                 source="application_service.get_application_status",
-                suggestions=DEFAULT_SUGGESTIONS[lang][:2],
+                suggestions=_s(lang)[:2],
                 language=lang,
             )
 
@@ -424,8 +523,8 @@ def _process_jago_message_deterministic(
             data=status_result,
             source="application_service.get_application_status",
             suggestions=[
-                DEFAULT_SUGGESTIONS[lang][1],
-                DEFAULT_SUGGESTIONS[lang][3],
+                _s(lang)[1],
+                _s(lang)[3],
             ],
             language=lang,
         )
@@ -439,7 +538,7 @@ def _process_jago_message_deterministic(
                 message=_t(lang, "app_id_required"),
                 data={"error": "APPLICATION_ID_REQUIRED"},
                 source="jago_orchestration",
-                suggestions=[DEFAULT_SUGGESTIONS[lang][1]],
+                suggestions=[_s(lang)[1]],
                 language=lang,
             )
 
@@ -451,7 +550,7 @@ def _process_jago_message_deterministic(
                 message=_t(lang, "app_not_found", app_id=app_id),
                 data={"application_id": app_id, "found": False},
                 source="application_service.get_application_deficiencies",
-                suggestions=DEFAULT_SUGGESTIONS[lang][:2],
+                suggestions=_s(lang)[:2],
                 language=lang,
             )
 
@@ -472,8 +571,8 @@ def _process_jago_message_deterministic(
             },
             source="application_service.get_application_deficiencies",
             suggestions=[
-                DEFAULT_SUGGESTIONS[lang][0],
-                DEFAULT_SUGGESTIONS[lang][3],
+                _s(lang)[0],
+                _s(lang)[3],
             ],
             language=lang,
         )
@@ -487,7 +586,7 @@ def _process_jago_message_deterministic(
                 message=_t(lang, "payment_id_required"),
                 data={"error": "APPLICATION_ID_REQUIRED"},
                 source="jago_orchestration",
-                suggestions=[DEFAULT_SUGGESTIONS[lang][2]],
+                suggestions=[_s(lang)[2]],
                 language=lang,
             )
 
@@ -499,7 +598,7 @@ def _process_jago_message_deterministic(
                 message=_t(lang, "app_not_found", app_id=app_id),
                 data={"application_id": app_id, "found": False},
                 source="payment_service.get_payment_status",
-                suggestions=DEFAULT_SUGGESTIONS[lang][:2],
+                suggestions=_s(lang)[:2],
                 language=lang,
             )
 
@@ -512,8 +611,8 @@ def _process_jago_message_deterministic(
             data=payment_result,
             source="payment_service.get_payment_status",
             suggestions=[
-                DEFAULT_SUGGESTIONS[lang][0],
-                DEFAULT_SUGGESTIONS[lang][1],
+                _s(lang)[0],
+                _s(lang)[1],
             ],
             language=lang,
         )
@@ -535,7 +634,7 @@ def _process_jago_message_deterministic(
                 message=_t(lang, "student_not_found", student_id=student_id),
                 data={"error": "STUDENT_NOT_FOUND"},
                 source="eligibility_service.check_eligibility",
-                suggestions=DEFAULT_SUGGESTIONS[lang][:2],
+                suggestions=_s(lang)[:2],
                 language=lang,
             )
 
@@ -546,7 +645,7 @@ def _process_jago_message_deterministic(
                 message=_t(lang, "scholarship_not_found", scholarship_id=scholarship_id),
                 data={"error": "SCHOLARSHIP_NOT_FOUND"},
                 source="eligibility_service.check_eligibility",
-                suggestions=DEFAULT_SUGGESTIONS[lang][:2],
+                suggestions=_s(lang)[:2],
                 language=lang,
             )
 
@@ -571,7 +670,7 @@ def _process_jago_message_deterministic(
                 "evaluation_mode": getattr(result, "evaluation_mode", "MOCK"),
             },
             source="eligibility_service.check_eligibility",
-            suggestions=[DEFAULT_SUGGESTIONS[lang][0], DEFAULT_SUGGESTIONS[lang][1]],
+            suggestions=[_s(lang)[0], _s(lang)[1]],
             language=lang,
         )
 
@@ -590,7 +689,7 @@ def _process_jago_message_deterministic(
                 "evaluation_mode": "MOCK",
             },
             source="jago_orchestration.documents_guidance",
-            suggestions=[DEFAULT_SUGGESTIONS[lang][0], DEFAULT_SUGGESTIONS[lang][3]],
+            suggestions=[_s(lang)[0], _s(lang)[3]],
             language=lang,
         )
 
@@ -609,7 +708,7 @@ def _process_jago_message_deterministic(
             message=msg,
             data={"scheme_info": scheme_data or get_all_schemes_summary()},
             source="jago_orchestration.scholarship_knowledge",
-            suggestions=DEFAULT_SUGGESTIONS[lang][:3],
+            suggestions=_s(lang)[:3],
             language=lang,
         )
 
@@ -620,7 +719,7 @@ def _process_jago_message_deterministic(
             message=_t(lang, "greeting"),
             data={"greeting": True},
             source="jago_rule_engine",
-            suggestions=DEFAULT_SUGGESTIONS[lang],
+            suggestions=_s(lang),
             language=lang,
         )
 
@@ -631,6 +730,6 @@ def _process_jago_message_deterministic(
         message=_t(lang, "unknown"),
         data=None,
         source="jago_rule_engine",
-        suggestions=DEFAULT_SUGGESTIONS[lang],
+        suggestions=_s(lang),
         language=lang,
     )

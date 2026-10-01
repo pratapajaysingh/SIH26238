@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/constants/asset_constants.dart';
+import '../../../core/services/language_service.dart';
 import '../../../core/theme/app_colors.dart';
 
 /// DashboardHeader renders the top navigation row matching the visual reference:
@@ -89,6 +90,44 @@ class DashboardHeader extends StatelessWidget {
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
+              // Language Selector Capsule [ EN v ]
+              ListenableBuilder(
+                listenable: LanguageService.instance,
+                builder: (context, _) => GestureDetector(
+                  onTap: () => _showLanguageModal(context),
+                  child: Container(
+                    height: 30,
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF1F5F9),
+                      borderRadius: BorderRadius.circular(15),
+                      border: Border.all(color: const Color(0xFFCBD5E1), width: 1),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          LanguageService.instance.displayCode,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF1E293B),
+                          ),
+                        ),
+                        const SizedBox(width: 2),
+                        const Icon(
+                          Icons.keyboard_arrow_down_rounded,
+                          size: 14,
+                          color: Color(0xFF64748B),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+
+              const SizedBox(width: 8),
+
               // Notification Bell with Unread Badge
               GestureDetector(
                 onTap: onNotificationTap ?? () => Navigator.of(context).pushNamed('/notifications'),
@@ -171,6 +210,71 @@ class DashboardHeader extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+
+  void _showLanguageModal(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      backgroundColor: Colors.white,
+      builder: (ctx) {
+        final currentCode = LanguageService.instance.currentLanguage;
+
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Select Language / भाषा चुनें',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF1E293B),
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close, size: 20),
+                      onPressed: () => Navigator.pop(ctx),
+                    ),
+                  ],
+                ),
+                const Divider(),
+                ...LanguageService.supportedLanguages.map(
+                  (lang) => ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(
+                      '${lang.nativeName} (${lang.name})',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: lang.code == currentCode
+                            ? FontWeight.w700
+                            : FontWeight.w400,
+                        color: const Color(0xFF1E293B),
+                      ),
+                    ),
+                    trailing: lang.code == currentCode
+                        ? const Icon(Icons.check_circle, color: Color(0xFF111827), size: 20)
+                        : null,
+                    onTap: () {
+                      LanguageService.instance.setLanguage(lang.code);
+                      Navigator.pop(ctx);
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }

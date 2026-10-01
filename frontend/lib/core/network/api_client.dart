@@ -172,8 +172,26 @@ class ApiClient {
       );
     }
 
-    // Other error statuses
+    // 429 Too Many Requests handling with Retry-After header
+    if (response.statusCode == 429) {
+      final retryAfterRaw = response.headers['retry-after'];
+      final retryAfterSeconds = retryAfterRaw != null ? int.tryParse(retryAfterRaw) ?? 60 : 60;
+      String message = 'Too many requests. Please wait before trying again.';
+      if (decodedBody is Map && decodedBody['detail'] != null) {
+        message = decodedBody['detail'].toString();
+      }
+      throw RateLimitException(
+        message,
+        retryAfterSeconds: retryAfterSeconds,
+        statusCode: 429,
+      );
+    }
+
+    // Other error statuses (422, 502, etc.)
     String errorMessage = 'API request failed';
+    if (response.statusCode == 502) {
+      errorMessage = 'Could not send the code right now. Please try again.';
+    }
     if (decodedBody is Map) {
       final detail = decodedBody['detail'];
       if (detail is List) {
@@ -196,6 +214,6 @@ class ApiClient {
 
   Exception _handleError(dynamic error) {
     if (error is ApiException) return error;
-    return NetworkException('Network error occurred: $error');
+    return const NetworkException('Unable to connect to server. Please check your internet connection.');
   }
 }

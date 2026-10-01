@@ -71,12 +71,40 @@ def get_cors_origins() -> list[str]:
 
 
 # JWT Authentication Configuration
-DEFAULT_JWT_SECRET = "dev_secret_key_change_in_production_tribalsetu_jwt_2026"
-JWT_SECRET = os.getenv("JWT_SECRET", DEFAULT_JWT_SECRET)
+JWT_SECRET = os.getenv("JWT_SECRET", "")
 JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "60"))
 
 # Gemini LLM Configuration
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+
+ENVIRONMENT = os.getenv("ENVIRONMENT", "development")  # development|test|production
+
+# ---- OTP engine --------------------------------------------------------------
+OTP_TTL_SECONDS = int(os.getenv("OTP_TTL_SECONDS", "300"))
+OTP_MAX_ATTEMPTS = int(os.getenv("OTP_MAX_ATTEMPTS", "5"))
+OTP_HMAC_SECRET = os.getenv("OTP_HMAC_SECRET", "")
+OTP_DELIVERY_CHANNEL = os.getenv("OTP_DELIVERY_CHANNEL", "console")  # console|email|sms
+REFRESH_TOKEN_EXPIRE_DAYS = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", "7"))
+
+# ---- Email delivery (Resend free tier, no card required) ---------------------
+RESEND_API_KEY = os.getenv("RESEND_API_KEY", "")
+OTP_EMAIL_SENDER = os.getenv("OTP_EMAIL_SENDER", "TribalSetu <onboarding@resend.dev>")
+
+
+def assert_production_config() -> None:
+    """Fail fast on an unsafe production deploy. Call from main.py startup."""
+    if ENVIRONMENT != "production":
+        return
+    problems = []
+    if not JWT_SECRET or len(JWT_SECRET) < 32:
+        problems.append("JWT_SECRET must be set to at least 32 random characters")
+    if not OTP_HMAC_SECRET or len(OTP_HMAC_SECRET) < 32:
+        problems.append("OTP_HMAC_SECRET must be set to at least 32 random characters")
+    if OTP_DELIVERY_CHANNEL == "console":
+        problems.append("OTP_DELIVERY_CHANNEL=console leaks codes to the server log")
+    if problems:
+        raise RuntimeError("Unsafe production configuration: " + "; ".join(problems))
+
 

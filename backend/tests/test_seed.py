@@ -17,5 +17,5 @@ def test_seed_database_idempotent(db_session):
 
     # Reset seed
     res3 = seed_database(db_session, reset=True)
-    assert res3["users"] == 4
+    assert res3["users"] == 5
     assert res3["scholarships"] == 5
