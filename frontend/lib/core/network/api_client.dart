@@ -40,6 +40,22 @@ class ApiClient {
     return headers;
   }
 
+  Uri _buildUri(String path, [Map<String, dynamic>? queryParameters]) {
+    if (_baseUrl.trim().isEmpty) {
+      throw StateError(
+        'API_BASE_URL is not set. Please launch the application with '
+        '--dart-define=API_BASE_URL=http://localhost:8000 (or your deployed backend URL)',
+      );
+    }
+    final cleanBase = _baseUrl.endsWith('/')
+        ? _baseUrl.substring(0, _baseUrl.length - 1)
+        : _baseUrl;
+    final cleanPath = path.startsWith('/') ? path : '/$path';
+    return Uri.parse('$cleanBase$cleanPath').replace(
+      queryParameters: queryParameters?.map((k, v) => MapEntry(k, v.toString())),
+    );
+  }
+
   Future<ApiResponse<T>> get<T>(
     String path, {
     Map<String, String>? headers,
@@ -47,9 +63,7 @@ class ApiClient {
     T Function(dynamic json)? fromJson,
   }) async {
     try {
-      final uri = Uri.parse('$_baseUrl$path').replace(
-        queryParameters: queryParameters?.map((k, v) => MapEntry(k, v.toString())),
-      );
+      final uri = _buildUri(path, queryParameters);
       final response = await _client.get(uri, headers: _buildHeaders(headers));
       return _handleResponse<T>(response, fromJson);
     } catch (e) {
@@ -64,7 +78,7 @@ class ApiClient {
     T Function(dynamic json)? fromJson,
   }) async {
     try {
-      final uri = Uri.parse('$_baseUrl$path');
+      final uri = _buildUri(path);
       final response = await _client.post(
         uri,
         headers: _buildHeaders(headers),
@@ -83,7 +97,7 @@ class ApiClient {
     T Function(dynamic json)? fromJson,
   }) async {
     try {
-      final uri = Uri.parse('$_baseUrl$path');
+      final uri = _buildUri(path);
       final response = await _client.patch(
         uri,
         headers: _buildHeaders(headers),
@@ -102,7 +116,7 @@ class ApiClient {
     T Function(dynamic json)? fromJson,
   }) async {
     try {
-      final uri = Uri.parse('$_baseUrl$path');
+      final uri = _buildUri(path);
       final response = await _client.put(
         uri,
         headers: _buildHeaders(headers),
@@ -120,7 +134,7 @@ class ApiClient {
     T Function(dynamic json)? fromJson,
   }) async {
     try {
-      final uri = Uri.parse('$_baseUrl$path');
+      final uri = _buildUri(path);
       final response = await _client.delete(
         uri,
         headers: _buildHeaders(headers),
@@ -213,6 +227,7 @@ class ApiClient {
   }
 
   Exception _handleError(dynamic error) {
+    if (error is StateError) throw error;
     if (error is ApiException) return error;
     return const NetworkException('Unable to connect to server. Please check your internet connection.');
   }

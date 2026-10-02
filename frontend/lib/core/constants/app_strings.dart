@@ -18,10 +18,13 @@ class AppStrings {
 
   // Input Fields & Actions
   static const String emailPlaceholder = 'Enter your email address';
+  static const String otpPlaceholder = '------';
   static const String sendCodeButton = 'Send code';
+  static const String continueButton = 'Continue';
   static const String verifyButton = 'Verify & Continue';
   static const String resendCodeButton = 'Resend code';
   static const String changeEmailButton = 'Change email';
+  static const String orDivider = 'OR';
 
   // Validation & Feedback Messages
   static const String emailRequired = 'Please enter your email address';

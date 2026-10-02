@@ -33,6 +33,10 @@ class ProfileInfoSectionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (items.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
     final screenWidth = MediaQuery.of(context).size.width;
     final labelWidth = screenWidth < 380 ? 106.0 : 124.0;
 

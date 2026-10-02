@@ -20,11 +20,16 @@ void main() async {
   );
 
   // Initialize repository layer via centralized ServiceLocator.
-  // ┌─────────────────────────────────────────────────────────┐
-  // │ To connect to real backend, run with:                   │
-  // │   flutter run --dart-define=USE_MOCK=false              │
-  // │   flutter run --dart-define=API_BASE_URL=http://x.x.x.x│
-  // └─────────────────────────────────────────────────────────┘
+  // ┌────────────────────────────────────────────────────────────────────────┐
+  // │ To connect to local FastAPI backend on fixed Chrome port:              │
+  // │   flutter run -d chrome --web-port 5000 \                              │
+  // │     --dart-define=USE_MOCK=false \                                     │
+  // │     --dart-define=API_BASE_URL=http://localhost:8000                   │
+  // │                                                                        │
+  // │ To deploy to production (zero code changes):                           │
+  // │   flutter run --dart-define=USE_MOCK=false \                           │
+  // │     --dart-define=API_BASE_URL=https://api.yourdomain.com              │
+  // └────────────────────────────────────────────────────────────────────────┘
   final sl = ServiceLocator.instance;
 
   // On app launch: check if stored session exists

@@ -46,7 +46,24 @@ class _ApplicationVerificationScreenState extends State<ApplicationVerificationS
   @override
   void initState() {
     super.initState();
-    final targetId = widget.applicationId ?? widget.initialApplication?.id ?? 'app-2024-st-01';
+    final String? resolvedId = widget.applicationId ?? widget.initialApplication?.id;
+    final String? targetId = resolvedId ?? (ServiceLocator.useMock ? 'app-2024-st-01' : null);
+
+    if (targetId == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          Navigator.of(context).pushReplacementNamed('/applications');
+        }
+      });
+      _controller = widget.controller ??
+          VerificationController(
+            verificationRepository: ServiceLocator.instance.verificationRepository,
+            applicationRepository: ServiceLocator.instance.applicationRepository,
+            documentRepository: ServiceLocator.instance.documentRepository,
+            applicationId: '',
+          );
+      return;
+    }
 
     _controller = widget.controller ??
         VerificationController(
@@ -90,6 +107,31 @@ class _ApplicationVerificationScreenState extends State<ApplicationVerificationS
 
   @override
   Widget build(BuildContext context) {
+    final String? resolvedId = widget.applicationId ?? widget.initialApplication?.id;
+    if (resolvedId == null && !ServiceLocator.useMock) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Application Verification')),
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.error_outline, size: 48, color: Color(0xFFDC2626)),
+              const SizedBox(height: 16),
+              const Text('No Application Selected', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              const Text('Please select an application from My Applications.'),
+              const SizedBox(height: 20),
+              ElevatedButton(
+                onPressed: () => Navigator.of(context).pushReplacementNamed('/applications'),
+                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF111827)),
+                child: const Text('Go to My Applications', style: TextStyle(color: Colors.white)),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     final screenWidth = MediaQuery.of(context).size.width;
     final topPatternWidth = screenWidth * 0.72;
     final topPatternHeight = topPatternWidth * (180 / 280);

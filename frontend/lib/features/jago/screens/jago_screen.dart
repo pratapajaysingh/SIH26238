@@ -210,6 +210,7 @@ class _JagoScreenState extends State<JagoScreen> {
                             ),
                           ),
                         ),
+                        ),
 
                         const SizedBox(height: 14),
 

@@ -183,104 +183,136 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
                         onEditProfile: () => _handleActionNotice('Edit Profile'),
                       ),
 
-                      const SizedBox(height: 14),
-
                       // 2. Personal Information Card
-                      ProfileInfoSectionCard(
-                        title: 'Personal Information',
-                        items: [
-                          ProfileInfoRowItem(
-                            icon: Icons.person_outline_rounded,
-                            label: 'Full Name',
-                            value: profile.fullName,
-                            onTap: () => _handleActionNotice('Full Name'),
-                          ),
-                          ProfileInfoRowItem(
-                            icon: Icons.calendar_today_outlined,
-                            label: 'Date of Birth',
-                            value: profile.dateOfBirthFormatted,
-                            onTap: () => _handleActionNotice('Date of Birth'),
-                          ),
-                          ProfileInfoRowItem(
-                            icon: Icons.people_outline_rounded,
-                            label: 'Gender',
-                            value: profile.gender ?? '-',
-                            onTap: () => _handleActionNotice('Gender'),
-                          ),
-                          ProfileInfoRowItem(
-                            icon: Icons.badge_outlined,
-                            label: 'Category',
-                            value: profile.categoryDisplay,
-                            onTap: () => _handleActionNotice('Category'),
-                          ),
-                        ],
-                      ),
-
-                      const SizedBox(height: 14),
+                      Builder(builder: (context) {
+                        final personalItems = <ProfileInfoRowItem>[
+                          if (profile.fullName.trim().isNotEmpty)
+                            ProfileInfoRowItem(
+                              icon: Icons.person_outline_rounded,
+                              label: 'Full Name',
+                              value: profile.fullName,
+                              onTap: () => _handleActionNotice('Full Name'),
+                            ),
+                          if (profile.dateOfBirth != null)
+                            ProfileInfoRowItem(
+                              icon: Icons.calendar_today_outlined,
+                              label: 'Date of Birth',
+                              value: profile.dateOfBirthFormatted,
+                              onTap: () => _handleActionNotice('Date of Birth'),
+                            ),
+                          if (profile.gender != null && profile.gender!.trim().isNotEmpty && profile.gender != '-')
+                            ProfileInfoRowItem(
+                              icon: Icons.people_outline_rounded,
+                              label: 'Gender',
+                              value: profile.gender!,
+                              onTap: () => _handleActionNotice('Gender'),
+                            ),
+                          if (profile.category.trim().isNotEmpty && profile.category != '-')
+                            ProfileInfoRowItem(
+                              icon: Icons.badge_outlined,
+                              label: 'Category',
+                              value: profile.categoryDisplay,
+                              onTap: () => _handleActionNotice('Category'),
+                            ),
+                        ];
+                        if (personalItems.isEmpty) return const SizedBox.shrink();
+                        return Column(
+                          children: [
+                            const SizedBox(height: 14),
+                            ProfileInfoSectionCard(
+                              title: 'Personal Information',
+                              items: personalItems,
+                            ),
+                          ],
+                        );
+                      }),
 
                       // 3. Contact Information Card
-                      ProfileInfoSectionCard(
-                        title: 'Contact Information',
-                        items: [
-                          ProfileInfoRowItem(
-                            icon: Icons.phone_outlined,
-                            label: 'Mobile Number',
-                            value: profile.mobile ?? '-',
-                            isVerified: profile.isVerified,
-                            onTap: () => _handleActionNotice('Mobile Number'),
-                          ),
-                          ProfileInfoRowItem(
-                            icon: Icons.mail_outline_rounded,
-                            label: 'Email Address',
-                            value: profile.email ?? '-',
-                            isVerified: profile.isVerified,
-                            onTap: () => _handleActionNotice('Email Address'),
-                          ),
-                          ProfileInfoRowItem(
-                            icon: Icons.location_on_outlined,
-                            label: 'Address',
-                            value: profile.formattedAddress,
-                            isMultiLine: true,
-                            onTap: () => _handleActionNotice('Address'),
-                          ),
-                        ],
-                      ),
-
-                      const SizedBox(height: 14),
+                      Builder(builder: (context) {
+                        final contactItems = <ProfileInfoRowItem>[
+                          if (profile.mobile != null && profile.mobile!.trim().isNotEmpty && profile.mobile != '-')
+                            ProfileInfoRowItem(
+                              icon: Icons.phone_outlined,
+                              label: 'Mobile Number',
+                              value: profile.mobile!,
+                              isVerified: profile.isVerified,
+                              onTap: () => _handleActionNotice('Mobile Number'),
+                            ),
+                          if (profile.email != null && profile.email!.trim().isNotEmpty && profile.email != '-')
+                            ProfileInfoRowItem(
+                              icon: Icons.mail_outline_rounded,
+                              label: 'Email Address',
+                              value: profile.email!,
+                              isVerified: profile.isVerified,
+                              onTap: () => _handleActionNotice('Email Address'),
+                            ),
+                          if (profile.formattedAddress.trim().isNotEmpty)
+                            ProfileInfoRowItem(
+                              icon: Icons.location_on_outlined,
+                              label: 'Address',
+                              value: profile.formattedAddress,
+                              isMultiLine: true,
+                              onTap: () => _handleActionNotice('Address'),
+                            ),
+                        ];
+                        if (contactItems.isEmpty) return const SizedBox.shrink();
+                        return Column(
+                          children: [
+                            const SizedBox(height: 14),
+                            ProfileInfoSectionCard(
+                              title: 'Contact Information',
+                              items: contactItems,
+                            ),
+                          ],
+                        );
+                      }),
 
                       // 4. Academic Information Card
-                      ProfileInfoSectionCard(
-                        title: 'Academic Information',
-                        items: [
-                          ProfileInfoRowItem(
-                            icon: Icons.school_outlined,
-                            label: 'Current Education Level',
-                            value: profile.course ?? '-',
-                            onTap: () => _handleActionNotice('Current Education Level'),
-                          ),
-                          ProfileInfoRowItem(
-                            icon: Icons.account_balance_outlined,
-                            label: 'Institute Name',
-                            value: profile.institutionName ?? '-',
-                            onTap: () => _handleActionNotice('Institute Name'),
-                          ),
-                          ProfileInfoRowItem(
-                            icon: Icons.description_outlined,
-                            label: 'Academic Year',
-                            value: profile.academicYear ?? '-',
-                            onTap: () => _handleActionNotice('Academic Year'),
-                          ),
-                        ],
-                      ),
-
-                      const SizedBox(height: 16),
+                      Builder(builder: (context) {
+                        final academicItems = <ProfileInfoRowItem>[
+                          if (profile.course != null && profile.course!.trim().isNotEmpty && profile.course != '-')
+                            ProfileInfoRowItem(
+                              icon: Icons.school_outlined,
+                              label: 'Current Education Level',
+                              value: profile.course!,
+                              onTap: () => _handleActionNotice('Current Education Level'),
+                            ),
+                          if (profile.institutionName != null && profile.institutionName!.trim().isNotEmpty && profile.institutionName != '-')
+                            ProfileInfoRowItem(
+                              icon: Icons.account_balance_outlined,
+                              label: 'Institute Name',
+                              value: profile.institutionName!,
+                              onTap: () => _handleActionNotice('Institute Name'),
+                            ),
+                          if (profile.academicYear != null && profile.academicYear!.trim().isNotEmpty && profile.academicYear != '-')
+                            ProfileInfoRowItem(
+                              icon: Icons.description_outlined,
+                              label: 'Academic Year',
+                              value: profile.academicYear!,
+                              onTap: () => _handleActionNotice('Academic Year'),
+                            ),
+                        ];
+                        if (academicItems.isEmpty) return const SizedBox.shrink();
+                        return Column(
+                          children: [
+                            const SizedBox(height: 14),
+                            ProfileInfoSectionCard(
+                              title: 'Academic Information',
+                              items: academicItems,
+                            ),
+                          ],
+                        );
+                      }),
 
                       // 5. Document Management Section
-                      ProfileDocumentSection(
-                        documents: _controller.documents,
-                        onViewAll: () => Navigator.of(context).pushNamed('/documents'),
-                        onDocumentTap: (doc) => Navigator.of(context).pushNamed('/documents'),
-                      ),
+                      if (_controller.documents.isNotEmpty) ...[
+                        const SizedBox(height: 16),
+                        ProfileDocumentSection(
+                          documents: _controller.documents,
+                          onViewAll: () => Navigator.of(context).pushNamed('/documents'),
+                          onDocumentTap: (doc) => Navigator.of(context).pushNamed('/documents'),
+                        ),
+                      ],
                     ],
 
                     // Clearance padding before fixed bottom navigation bar

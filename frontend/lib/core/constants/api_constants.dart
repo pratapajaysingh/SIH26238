@@ -2,17 +2,16 @@
 class ApiConstants {
   ApiConstants._();
 
-  // Base URL (configured via environment in production)
-  // Defaults to http://localhost:8000 for local development (use http://10.0.2.2:8000 for Android emulator)
-  static const String baseUrl = String.fromEnvironment(
-    'API_BASE_URL',
-    defaultValue: 'http://localhost:8000',
-  );
+  // Base URL configured strictly via --dart-define=API_BASE_URL=<url>.
+  // Never hardcoded anywhere so switching to deployed URLs requires zero code changes.
+  static const String baseUrl = String.fromEnvironment('API_BASE_URL');
   static const String apiVersion = '/api/v1';
 
   // Auth endpoints (live OTP authentication contract)
   static const String authOtpRequest = '$apiVersion/auth/otp/request';
   static const String authOtpVerify = '$apiVersion/auth/otp/verify';
+  static const String authMe = '$apiVersion/auth/me';
+  static const String usersMe = '$apiVersion/users/me';
 
   // Student endpoints
   static const String studentsMe = '$apiVersion/students/me';

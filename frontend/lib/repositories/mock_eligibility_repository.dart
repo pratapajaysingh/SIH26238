@@ -1,3 +1,4 @@
+import '../models/conflict_check_result.dart';
 import '../models/eligibility_check_result.dart';
 import 'eligibility_repository.dart';
 

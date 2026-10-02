@@ -42,8 +42,8 @@ flutter run -d chrome
 flutter run -d windows
 
 # Mode B: Live API Mode (Connected to real FastAPI backend)
-# For Web / Windows Desktop:
-flutter run -d chrome --dart-define=USE_MOCK=false --dart-define=API_BASE_URL=http://localhost:8000
+# For Web (Chrome on fixed port 5000):
+flutter run -d chrome --web-port 5000 --dart-define=API_BASE_URL=http://localhost:8000
 
 # For Android Emulator (10.0.2.2 maps to host machine localhost):
 flutter run -d emulator-5554 --dart-define=USE_MOCK=false --dart-define=API_BASE_URL=http://10.0.2.2:8000

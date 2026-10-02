@@ -12,6 +12,7 @@ import 'package:tribalsetu/features/eligibility/widgets/eligibility_result_card.
 import 'package:tribalsetu/features/eligibility/widgets/eligibility_stepper.dart';
 import 'package:tribalsetu/features/eligibility/widgets/proceed_to_apply_button.dart';
 import 'package:tribalsetu/features/eligibility/widgets/scheme_selector_card.dart';
+import 'package:tribalsetu/models/conflict_check_result.dart';
 import 'package:tribalsetu/models/eligibility_check_result.dart';
 import 'package:tribalsetu/models/scholarship.dart';
 import 'package:tribalsetu/repositories/eligibility_repository.dart';
@@ -21,6 +22,14 @@ import 'package:tribalsetu/repositories/mock_scholarship_repository.dart';
 class _FakeFailingEligibilityRepository implements EligibilityRepository {
   @override
   Future<EligibilityCheckResult> checkEligibility({
+    required String studentId,
+    required String schemeId,
+  }) async {
+    throw const ApiException('Network timeout while connecting to eligibility engine');
+  }
+
+  @override
+  Future<ConflictCheckResult> checkConflict({
     required String studentId,
     required String schemeId,
   }) async {

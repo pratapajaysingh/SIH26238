@@ -44,21 +44,15 @@ import '../../repositories/mock_admin_repository.dart';
 /// - flutter run --dart-define=USE_MOCK=false --dart-define=API_BASE_URL=http://localhost:8000
 /// - ServiceLocator.useMockMode = false (programmatic)
 class ServiceLocator {
-  ServiceLocator._() {
-    _initApiClient();
-  }
+  ServiceLocator._();
 
   static final ServiceLocator _instance = ServiceLocator._();
   static ServiceLocator get instance => _instance;
 
   // ── CONFIGURATION ─────────────────────────────────────────
-  static const bool _hasExplicitUseMock = bool.hasEnvironment('USE_MOCK');
-  static const bool _hasExplicitApiBaseUrl = bool.hasEnvironment('API_BASE_URL');
-
-  static const bool _envUseMock = _hasExplicitUseMock
-      ? bool.fromEnvironment('USE_MOCK')
-      : (_hasExplicitApiBaseUrl ? false : true);
-
+  // USE_MOCK is the ONLY switch that selects mock vs live.
+  // API_BASE_URL only provides the target endpoint URL.
+  static const bool _envUseMock = bool.fromEnvironment('USE_MOCK', defaultValue: true);
   static bool _overrideUseMock = _envUseMock;
 
   /// Dynamic getter for mock status.
@@ -69,27 +63,28 @@ class ServiceLocator {
     _overrideUseMock = value;
   }
 
-  static const String baseUrl = String.fromEnvironment(
-    'API_BASE_URL',
-    defaultValue: ApiConstants.baseUrl,
-  );
+  static const String baseUrl = ApiConstants.baseUrl;
 
   // ── SHARED API CLIENT ─────────────────────────────────────
-  late final ApiClient _apiClient = ApiClient(baseUrl: baseUrl);
+  // Lazily initialized: in mock mode, _apiClient is never instantiated.
+  late final ApiClient _apiClient = _createApiClient();
 
-  void _initApiClient() {
-    _apiClient.onUnauthorized = () {
-      // 401 Unauthorized handling: reset active session & bearer token
+  ApiClient _createApiClient() {
+    final client = ApiClient(baseUrl: baseUrl);
+    client.onUnauthorized = () {
       _apiAuthRepository.logout();
     };
+    return client;
   }
 
   /// Access the shared ApiClient.
   ApiClient get apiClient => _apiClient;
 
-  /// Set the bearer token on the shared ApiClient.
+  /// Set the bearer token on the shared ApiClient (no-op in mock mode).
   void setAuthToken(String? token) {
-    _apiClient.setAuthToken(token);
+    if (!useMock) {
+      _apiClient.setAuthToken(token);
+    }
   }
 
   // ── STORAGE ───────────────────────────────────────────────

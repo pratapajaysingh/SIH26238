@@ -24,7 +24,7 @@ class AdminHeader extends StatelessWidget {
               Image.asset(
                 AssetConstants.govtHeader,
                 height: 38,
-                errorBuilder: (_, __, ___) => const Icon(
+                errorBuilder: (_, _, _) => const Icon(
                   Icons.account_balance,
                   size: 30,
                   color: AppColors.primary,

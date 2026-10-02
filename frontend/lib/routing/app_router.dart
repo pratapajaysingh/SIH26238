@@ -1,3 +1,5 @@
+import 'package:flutter/material.dart';
+
 import '../core/enums/role_enum.dart';
 import '../features/admin/screens/admin_dashboard_screen.dart';
 import '../features/applications/screens/my_applications_screen.dart';

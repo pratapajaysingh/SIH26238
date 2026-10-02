@@ -7,10 +7,12 @@ class ContinueButton extends StatelessWidget {
   final VoidCallback? onPressed;
   final bool isLoading;
   final bool isEnabled;
+  final String label;
 
   const ContinueButton({
     super.key,
     required this.onPressed,
+    this.label = AppStrings.continueButton,
     this.isLoading = false,
     this.isEnabled = true,
   });
@@ -53,18 +55,18 @@ class ContinueButton extends StatelessWidget {
                     )
                   : Row(
                       mainAxisAlignment: MainAxisAlignment.center,
-                      children: const [
+                      children: [
                         Text(
-                          AppStrings.continueButton,
-                          style: TextStyle(
+                          label,
+                          style: const TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w600,
                             color: Colors.white,
                             letterSpacing: 0.2,
                           ),
                         ),
-                        SizedBox(width: 8),
-                        Icon(
+                        const SizedBox(width: 8),
+                        const Icon(
                           Icons.arrow_forward_rounded,
                           size: 18,
                           color: Colors.white,

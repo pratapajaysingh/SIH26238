@@ -32,8 +32,9 @@ flutter run --dart-define=USE_MOCK=false --dart-define=API_BASE_URL=http://10.0.
 ```
 
 ### B. Web (Chrome / Edge)
+Use a fixed port (`--web-port 5000`) so the CORS origin matches `CORS_ORIGINS` in backend `.env`:
 ```bash
-flutter run -d chrome --dart-define=USE_MOCK=false --dart-define=API_BASE_URL=http://localhost:8000
+flutter run -d chrome --web-port 5000 --dart-define=API_BASE_URL=http://localhost:8000
 ```
 
 ### C. Windows Desktop

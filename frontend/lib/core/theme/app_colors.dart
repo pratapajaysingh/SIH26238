@@ -7,6 +7,7 @@ class AppColors {
   AppColors._();
 
   // Core Monochromes
+  static const Color primary = Color(0xFF111827);
   static const Color black = Color(0xFF111827);
   static const Color pureBlack = Color(0xFF000000);
   static const Color darkCharcoal = Color(0xFF1F2937);

@@ -102,10 +102,10 @@ class ApiAdminRepository implements AdminRepository {
     final response = await apiClient.post<Map<String, dynamic>>(
       ApiConstants.analyticsOutreach,
       body: {
-        if (demoId != null) 'demo_id': demoId,
-        if (studentId != null) 'student_id': studentId,
-        if (title != null) 'title': title,
-        if (message != null) 'message': message,
+        'demo_id': ?demoId,
+        'student_id': ?studentId,
+        'title': ?title,
+        'message': ?message,
       },
     );
 

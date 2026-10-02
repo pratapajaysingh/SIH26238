@@ -143,6 +143,11 @@ class ApiAuthRepository implements AuthRepository {
         success: false,
         message: 'Invalid or expired code.',
       );
+    } on NetworkException catch (e) {
+      return ApiResponse<AuthSession>(
+        success: false,
+        message: e.message,
+      );
     } on ApiException catch (e) {
       if (e.statusCode == 401) {
         return const ApiResponse<AuthSession>(
@@ -159,11 +164,6 @@ class ApiAuthRepository implements AuthRepository {
       return ApiResponse<AuthSession>(
         success: false,
         message: e.message.isNotEmpty ? e.message : 'Invalid or expired code.',
-      );
-    } on NetworkException catch (e) {
-      return ApiResponse<AuthSession>(
-        success: false,
-        message: e.message,
       );
     } catch (_) {
       return const ApiResponse<AuthSession>(
