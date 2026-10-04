@@ -63,3 +63,22 @@ def seeded_db(db_session):
     """Database session pre-populated with deterministic synthetic demo seed data."""
     seed_database(db_session, reset=False)
     return db_session
+
+
+@pytest.fixture(scope="function")
+def auth_headers():
+    """Authorization headers for seeded demo student Arjun Munda."""
+    from app.core.security import create_access_token
+    from app.seed import DEMO_USER_ID
+    token = create_access_token({"sub": DEMO_USER_ID})
+    return {"Authorization": f"Bearer {token}"}
+
+
+@pytest.fixture(scope="function")
+def admin_headers():
+    """Authorization headers for seeded demo admin officer."""
+    from app.core.security import create_access_token
+    from app.seed import DEMO_ADMIN_USER_ID
+    token = create_access_token({"sub": DEMO_ADMIN_USER_ID})
+    return {"Authorization": f"Bearer {token}"}
+

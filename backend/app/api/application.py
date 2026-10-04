@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from app.core.dependencies import get_db, get_current_user, get_current_user_optional
+from app.core.dependencies import get_db, get_current_user
+from app.models.application import Application
 from app.models.user import User
 from app.repositories.application_repository import get_application_by_id
 from app.schemas.application import (
@@ -37,6 +38,23 @@ from app.services.application_document_service import (
 router = APIRouter(prefix="/applications", tags=["Applications"])
 
 
+def _get_and_verify_application(db: Session, application_id: str, current_user: User) -> Application:
+    app = get_application_by_id(db, application_id)
+    if not app:
+        raise HTTPException(
+            status_code=404,
+            detail="Application not found",
+        )
+    if current_user.role.upper() != "ADMIN":
+        student = get_student_by_user(db, current_user.id)
+        if not student or app.student_id != student.id:
+            raise HTTPException(
+                status_code=403,
+                detail="Access denied: Cannot access another student's application",
+            )
+    return app
+
+
 @router.get("/me", response_model=list[ApplicationResponse])
 @router.get("/me/", response_model=list[ApplicationResponse], include_in_schema=False)
 def get_my_applications_api(
@@ -55,10 +73,10 @@ def get_my_applications_api(
 @router.post("/", response_model=ApplicationResponse, include_in_schema=False)
 def create_application_api(
     application: ApplicationCreate,
-    current_user: User | None = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    if current_user:
+    if current_user.role.upper() != "ADMIN":
         student = get_student_by_user(db, current_user.id)
         if not student or application.student_id != student.id:
             raise HTTPException(
@@ -85,8 +103,16 @@ def create_application_api(
 
 @router.get("", response_model=list[ApplicationResponse])
 @router.get("/", response_model=list[ApplicationResponse], include_in_schema=False)
-def list_applications_api(db: Session = Depends(get_db)):
-    return list_applications(db)
+def list_applications_api(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    if current_user.role.upper() == "ADMIN":
+        return list_applications(db)
+    student = get_student_by_user(db, current_user.id)
+    if not student:
+        return []
+    return list_student_applications(db, student.id)
 
 
 
@@ -95,18 +121,23 @@ def list_applications_api(db: Session = Depends(get_db)):
 def link_application_document_api(
     application_id: str,
     payload: ApplicationDocumentCreate,
-    current_user: User | None = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    if current_user:
+    app = get_application_by_id(db, application_id)
+    if not app:
+        raise HTTPException(
+            status_code=404,
+            detail="Application not found"
+        )
+    if current_user.role.upper() != "ADMIN":
         student = get_student_by_user(db, current_user.id)
         if not student:
             raise HTTPException(
                 status_code=403,
                 detail="Access denied: No student profile associated with user",
             )
-        app = get_application_by_id(db, application_id)
-        if app and app.student_id != student.id:
+        if app.student_id != student.id:
             raise HTTPException(
                 status_code=403,
                 detail="Access denied: Cannot modify another student's application",
@@ -145,8 +176,10 @@ def link_application_document_api(
 @router.get("/{application_id}/documents/", response_model=list[DocumentResponse], include_in_schema=False)
 def list_application_documents_api(
     application_id: str,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+    _get_and_verify_application(db, application_id, current_user)
     result = get_application_documents(db, application_id)
 
     if result == "APPLICATION_NOT_FOUND":
@@ -162,8 +195,10 @@ def list_application_documents_api(
 @router.get("/{application_id}/status/", response_model=ApplicationStatusResponse, include_in_schema=False)
 def get_application_status_api(
     application_id: str,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+    _get_and_verify_application(db, application_id, current_user)
     result = get_application_status(db, application_id)
 
     if result == "APPLICATION_NOT_FOUND":
@@ -179,8 +214,10 @@ def get_application_status_api(
 @router.get("/{application_id}/deficiencies/", response_model=list[ApplicationDeficiencyResponse], include_in_schema=False)
 def get_application_deficiencies_api(
     application_id: str,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+    _get_and_verify_application(db, application_id, current_user)
     result = get_application_deficiencies(db, application_id)
 
     if result == "APPLICATION_NOT_FOUND":
@@ -196,8 +233,10 @@ def get_application_deficiencies_api(
 @router.get("/{application_id}/payment-status/", response_model=PaymentStatusResponse, include_in_schema=False)
 def get_payment_status_api(
     application_id: str,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+    _get_and_verify_application(db, application_id, current_user)
     result = get_payment_status(db, application_id)
 
     if result == "APPLICATION_NOT_FOUND":
@@ -213,8 +252,10 @@ def get_payment_status_api(
 @router.get("/{application_id}/timeline/", response_model=list[TimelineEventResponse], include_in_schema=False)
 def get_application_timeline_api(
     application_id: str,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+    _get_and_verify_application(db, application_id, current_user)
     result = get_application_timeline(db, application_id)
 
     if result == "APPLICATION_NOT_FOUND":
@@ -230,10 +271,11 @@ def get_application_timeline_api(
 @router.get("/{application_id}/payments/", response_model=PaymentStatusResponse, include_in_schema=False)
 def get_payment_status_legacy_alias_api(
     application_id: str,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Compatibility alias for legacy documentation referencing /payments instead of /payment-status."""
-    return get_payment_status_api(application_id, db)
+    return get_payment_status_api(application_id, current_user, db)
 
 
 @router.post("/{application_id}/transition", response_model=ApplicationTransitionResponse)
@@ -243,7 +285,7 @@ def get_payment_status_legacy_alias_api(
 def transition_application_status_api(
     application_id: str,
     payload: ApplicationStatusTransitionRequest,
-    current_user: User | None = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """Execute a validated lifecycle state transition for an application.
@@ -251,15 +293,20 @@ def transition_application_status_api(
     Atomically updates the current application status and records a corresponding
     chronological timeline event.
     """
-    if current_user:
+    app = get_application_by_id(db, application_id)
+    if not app:
+        raise HTTPException(
+            status_code=404,
+            detail="Application not found",
+        )
+    if current_user.role.upper() != "ADMIN":
         student = get_student_by_user(db, current_user.id)
         if not student:
             raise HTTPException(
                 status_code=403,
                 detail="Access denied: No student profile associated with user",
             )
-        app = get_application_by_id(db, application_id)
-        if app and app.student_id != student.id:
+        if app.student_id != student.id:
             raise HTTPException(
                 status_code=403,
                 detail="Access denied: Cannot transition another student's application",

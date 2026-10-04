@@ -7,11 +7,12 @@ def test_list_manual_reviews_empty_initially(client, seeded_db):
     assert isinstance(response.json(), list)
 
 
-def test_manual_review_lifecycle(client, seeded_db):
+def test_manual_review_lifecycle(client, seeded_db, auth_headers):
     # Link doc 2 (TEST_MISMATCH) to DEMO_APPLICATION_ID
     doc_id = DEMO_DOCUMENTS[2]["id"]
     client.post(
         f"/api/v1/applications/{DEMO_APPLICATION_ID}/documents",
+        headers=auth_headers,
         json={"document_id": doc_id},
     )
 

@@ -1,8 +1,8 @@
 from app.seed import DEMO_STUDENT_ID
 
 
-def test_list_documents(client, seeded_db):
-    response = client.get("/api/v1/documents")
+def test_list_documents(client, seeded_db, auth_headers):
+    response = client.get("/api/v1/documents", headers=auth_headers)
     assert response.status_code == 200
     docs = response.json()
     assert len(docs) >= 1
@@ -14,9 +14,10 @@ def test_list_documents(client, seeded_db):
     assert doc["status"] in ["PENDING", "VERIFIED", "EXPIRED", "REJECTED"]
 
 
-def test_create_document_success(client, seeded_db):
+def test_create_document_success(client, seeded_db, auth_headers):
     response = client.post(
         "/api/v1/documents",
+        headers=auth_headers,
         json={
             "student_id": DEMO_STUDENT_ID,
             "document_type": "MOCK_INCOME_CERTIFICATE",
@@ -31,9 +32,10 @@ def test_create_document_success(client, seeded_db):
     assert data["status"] == "PENDING"
 
 
-def test_create_document_student_not_found(client, seeded_db):
+def test_create_document_student_not_found(client, seeded_db, admin_headers):
     response = client.post(
         "/api/v1/documents",
+        headers=admin_headers,
         json={
             "student_id": "non-existent-student",
             "document_type": "MOCK_INCOME_CERTIFICATE",
@@ -42,3 +44,4 @@ def test_create_document_student_not_found(client, seeded_db):
     )
     assert response.status_code == 404
     assert response.json()["detail"] == "Student not found"
+

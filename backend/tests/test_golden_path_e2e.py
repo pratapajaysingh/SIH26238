@@ -81,6 +81,7 @@ def test_golden_path_complete_journey(client, seeded_db):
     # 8. Create Application
     app_res = client.post(
         "/api/v1/applications",
+        headers=auth_headers,
         json={
             "student_id": student_id,
             "scholarship_id": target_sch_id,
@@ -99,6 +100,7 @@ def test_golden_path_complete_journey(client, seeded_db):
     # 10. Register Document
     doc_res = client.post(
         "/api/v1/documents",
+        headers=auth_headers,
         json={
             "student_id": student_id,
             "document_type": "TEST_VERIFIED",
@@ -111,6 +113,7 @@ def test_golden_path_complete_journey(client, seeded_db):
     # 11. Link document to application
     link_res = client.post(
         f"/api/v1/applications/{app_id}/documents",
+        headers=auth_headers,
         json={"document_id": doc_id},
     )
     assert link_res.status_code == 200
@@ -132,18 +135,18 @@ def test_golden_path_complete_journey(client, seeded_db):
     assert exec_res.json()["status"] == "VERIFIED"
 
     # 14. Query Application Status
-    status_res = client.get(f"/api/v1/applications/{app_id}/status")
+    status_res = client.get(f"/api/v1/applications/{app_id}/status", headers=auth_headers)
     assert status_res.status_code == 200
     assert status_res.json()["id"] == app_id
     assert status_res.json()["status"] == "DRAFT"
 
     # 15. Query Application Deficiencies (should be 0 since document verified)
-    defic_res = client.get(f"/api/v1/applications/{app_id}/deficiencies")
+    defic_res = client.get(f"/api/v1/applications/{app_id}/deficiencies", headers=auth_headers)
     assert defic_res.status_code == 200
     assert len(defic_res.json()) == 0
 
     # 16. Query Payment / DBT Status
-    pay_res = client.get(f"/api/v1/applications/{app_id}/payment-status")
+    pay_res = client.get(f"/api/v1/applications/{app_id}/payment-status", headers=auth_headers)
     assert pay_res.status_code == 200
     assert pay_res.json()["application_id"] == app_id
     assert "status" in pay_res.json()
@@ -200,11 +203,19 @@ def test_mismatch_verification_leads_to_deficiency_and_manual_review(client, see
     )
     student_id = s_res.json()["id"]
 
+    login_res = client.post(
+        "/api/v1/auth/login",
+        json={"email": "review.app@example.com", "password": "Password123!"},
+    )
+    rev_token = login_res.json()["access_token"]
+    rev_headers = {"Authorization": f"Bearer {rev_token}"}
+
     sch_res = client.get("/api/v1/scholarships")
     scholarship_id = sch_res.json()[0]["id"]
 
     app_res = client.post(
         "/api/v1/applications",
+        headers=rev_headers,
         json={"student_id": student_id, "scholarship_id": scholarship_id},
     )
     app_id = app_res.json()["id"]
@@ -212,6 +223,7 @@ def test_mismatch_verification_leads_to_deficiency_and_manual_review(client, see
     # 2. Upload TEST_MISMATCH document
     doc_res = client.post(
         "/api/v1/documents",
+        headers=rev_headers,
         json={
             "student_id": student_id,
             "document_type": "TEST_MISMATCH",
@@ -221,7 +233,7 @@ def test_mismatch_verification_leads_to_deficiency_and_manual_review(client, see
     doc_id = doc_res.json()["id"]
 
     # 3. Link and verify
-    client.post(f"/api/v1/applications/{app_id}/documents", json={"document_id": doc_id})
+    client.post(f"/api/v1/applications/{app_id}/documents", headers=rev_headers, json={"document_id": doc_id})
     verif_res = client.post(f"/api/v1/applications/{app_id}/verifications", json={"document_id": doc_id})
     verif_id = verif_res.json()["id"]
 
@@ -230,7 +242,7 @@ def test_mismatch_verification_leads_to_deficiency_and_manual_review(client, see
     assert exec_res.json()["status"] == "MISMATCH"
 
     # 4. Deficiencies endpoint detects mismatch
-    defic_res = client.get(f"/api/v1/applications/{app_id}/deficiencies")
+    defic_res = client.get(f"/api/v1/applications/{app_id}/deficiencies", headers=rev_headers)
     assert defic_res.status_code == 200
     deficiencies = defic_res.json()
     assert len(deficiencies) >= 1
@@ -294,8 +306,8 @@ def test_data_isolation_between_authenticated_students(client, seeded_db):
 
     # Create scholarship application for Student A and Student B
     sch_id = client.get("/api/v1/scholarships").json()[0]["id"]
-    app_a = client.post("/api/v1/applications", json={"student_id": student_a_id, "scholarship_id": sch_id}).json()["id"]
-    app_b = client.post("/api/v1/applications", json={"student_id": student_b_id, "scholarship_id": sch_id}).json()["id"]
+    app_a = client.post("/api/v1/applications", headers=headers_a, json={"student_id": student_a_id, "scholarship_id": sch_id}).json()["id"]
+    app_b = client.post("/api/v1/applications", headers=headers_b, json={"student_id": student_b_id, "scholarship_id": sch_id}).json()["id"]
 
     # Student A's /applications/me only sees app_a
     res_a = client.get("/api/v1/applications/me", headers=headers_a)

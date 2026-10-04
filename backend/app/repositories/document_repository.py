@@ -13,6 +13,10 @@ def get_documents(db: Session):
     return db.query(Document).all()
 
 
+def get_documents_by_student_id(db: Session, student_id: str):
+    return db.query(Document).filter(Document.student_id == student_id).all()
+
+
 def get_document_by_id(db: Session, document_id: str):
     return db.query(Document).filter(Document.id == document_id).first()
 

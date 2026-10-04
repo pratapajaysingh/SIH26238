@@ -4,6 +4,7 @@ from app.schemas.document import DocumentCreate
 from app.repositories.document_repository import (
     create_document as repo_create_document,
     get_documents,
+    get_documents_by_student_id,
 )
 from app.repositories.student_repository import get_student_by_id
 
@@ -25,3 +26,7 @@ def create_document(db: Session, document: DocumentCreate):
 
 def list_documents(db: Session):
     return get_documents(db)
+
+
+def list_student_documents(db: Session, student_id: str):
+    return get_documents_by_student_id(db, student_id)

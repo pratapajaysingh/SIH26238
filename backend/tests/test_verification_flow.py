@@ -4,7 +4,7 @@ from app.models.document import Document
 from app.models.application_document import ApplicationDocument
 
 
-def test_verification_unavailable_source_routes_to_mismatch(client, seeded_db):
+def test_verification_unavailable_source_routes_to_mismatch(client, seeded_db, auth_headers):
     """TEST_UNAVAILABLE document type simulates source unavailability → MISMATCH → eligible for manual review."""
     unavail_doc_id = DEMO_DOCUMENTS[3]["id"]  # TEST_UNAVAILABLE
 
@@ -14,6 +14,7 @@ def test_verification_unavailable_source_routes_to_mismatch(client, seeded_db):
     # Note: Need to create link if not already present
     client.post(
         f"/api/v1/applications/{DEMO_APPLICATION_ID}/documents",
+        headers=auth_headers,
         json={"document_id": unavail_doc_id},
     )
 

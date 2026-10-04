@@ -14,8 +14,8 @@ from app.integrations import (
 )
 
 
-def test_timeline_seeded_demo_application(client, seeded_db):
-    response = client.get(f"/api/v1/applications/{DEMO_APPLICATION_ID}/timeline")
+def test_timeline_seeded_demo_application(client, seeded_db, auth_headers):
+    response = client.get(f"/api/v1/applications/{DEMO_APPLICATION_ID}/timeline", headers=auth_headers)
     assert response.status_code == 200
     timeline = response.json()
     assert isinstance(timeline, list)
@@ -27,16 +27,17 @@ def test_timeline_seeded_demo_application(client, seeded_db):
     assert "timestamp" in first_event
 
 
-def test_timeline_nonexistent_application_returns_404(client, seeded_db):
-    response = client.get("/api/v1/applications/non-existent-app-id/timeline")
+def test_timeline_nonexistent_application_returns_404(client, seeded_db, admin_headers):
+    response = client.get("/api/v1/applications/non-existent-app-id/timeline", headers=admin_headers)
     assert response.status_code == 404
     assert response.json()["detail"] == "Application not found"
 
 
-def test_create_application_creates_initial_draft_timeline(client, seeded_db):
+def test_create_application_creates_initial_draft_timeline(client, seeded_db, auth_headers):
     # 1. Create a new application
     create_resp = client.post(
         "/api/v1/applications",
+        headers=auth_headers,
         json={
             "student_id": DEMO_STUDENT_ID,
             "scholarship_id": DEMO_SCHOLARSHIPS[2]["id"],
@@ -46,7 +47,7 @@ def test_create_application_creates_initial_draft_timeline(client, seeded_db):
     app_id = create_resp.json()["id"]
 
     # 2. Fetch timeline
-    timeline_resp = client.get(f"/api/v1/applications/{app_id}/timeline")
+    timeline_resp = client.get(f"/api/v1/applications/{app_id}/timeline", headers=auth_headers)
     assert timeline_resp.status_code == 200
     timeline = timeline_resp.json()
     assert len(timeline) == 1
@@ -55,10 +56,11 @@ def test_create_application_creates_initial_draft_timeline(client, seeded_db):
     assert "initialized in DRAFT status" in (timeline[0]["message"] or "")
 
 
-def test_timeline_ordering_and_append(client, seeded_db, db_session):
+def test_timeline_ordering_and_append(client, seeded_db, db_session, auth_headers):
     # 1. Create application
     create_resp = client.post(
         "/api/v1/applications",
+        headers=auth_headers,
         json={
             "student_id": DEMO_STUDENT_ID,
             "scholarship_id": DEMO_SCHOLARSHIPS[0]["id"],
@@ -87,7 +89,7 @@ def test_timeline_ordering_and_append(client, seeded_db, db_session):
     )
 
     # 3. Retrieve timeline via API
-    resp = client.get(f"/api/v1/applications/{app_id}/timeline")
+    resp = client.get(f"/api/v1/applications/{app_id}/timeline", headers=auth_headers)
     assert resp.status_code == 200
     events = resp.json()
     assert len(events) == 4
@@ -124,13 +126,13 @@ def test_seed_idempotence_with_timeline(db_session):
     assert res2["application_timeline"] == 0
 
 
-def test_payment_compatibility_alias(client, seeded_db):
+def test_payment_compatibility_alias(client, seeded_db, auth_headers):
     # Canonical endpoint
-    canonical_resp = client.get(f"/api/v1/applications/{DEMO_APPLICATION_ID}/payment-status")
+    canonical_resp = client.get(f"/api/v1/applications/{DEMO_APPLICATION_ID}/payment-status", headers=auth_headers)
     assert canonical_resp.status_code == 200
 
     # Compatibility alias endpoint
-    alias_resp = client.get(f"/api/v1/applications/{DEMO_APPLICATION_ID}/payments")
+    alias_resp = client.get(f"/api/v1/applications/{DEMO_APPLICATION_ID}/payments", headers=auth_headers)
     assert alias_resp.status_code == 200
 
     assert canonical_resp.json() == alias_resp.json()
@@ -188,10 +190,11 @@ def test_government_integration_mock_adapters():
     assert nta_res["evaluation_mode"] == "MOCK"
 
 
-def test_transition_application_status_valid_flow(client, seeded_db):
+def test_transition_application_status_valid_flow(client, seeded_db, auth_headers):
     # 1. Create app (starts DRAFT)
     create_resp = client.post(
         "/api/v1/applications",
+        headers=auth_headers,
         json={
             "student_id": DEMO_STUDENT_ID,
             "scholarship_id": DEMO_SCHOLARSHIPS[0]["id"],
@@ -203,6 +206,7 @@ def test_transition_application_status_valid_flow(client, seeded_db):
     # 2. DRAFT -> SUBMITTED
     t1 = client.post(
         f"/api/v1/applications/{app_id}/transition",
+        headers=auth_headers,
         json={"status": "SUBMITTED", "message": "Submitted by applicant"},
     )
     assert t1.status_code == 200
@@ -210,12 +214,13 @@ def test_transition_application_status_valid_flow(client, seeded_db):
     assert t1.json()["previous_status"] == "DRAFT"
 
     # Check status endpoint
-    st1 = client.get(f"/api/v1/applications/{app_id}/status")
+    st1 = client.get(f"/api/v1/applications/{app_id}/status", headers=auth_headers)
     assert st1.json()["status"] == "SUBMITTED"
 
     # 3. SUBMITTED -> IN_VERIFICATION
     t2 = client.post(
         f"/api/v1/applications/{app_id}/transition",
+        headers=auth_headers,
         json={"status": "IN_VERIFICATION"},
     )
     assert t2.status_code == 200
@@ -225,6 +230,7 @@ def test_transition_application_status_valid_flow(client, seeded_db):
     # 4. IN_VERIFICATION -> DEFICIENCY
     t3 = client.post(
         f"/api/v1/applications/{app_id}/transition",
+        headers=auth_headers,
         json={"status": "DEFICIENCY", "message": "Document mismatch found"},
     )
     assert t3.status_code == 200
@@ -233,6 +239,7 @@ def test_transition_application_status_valid_flow(client, seeded_db):
     # 5. DEFICIENCY -> IN_VERIFICATION (re-upload)
     t4 = client.post(
         f"/api/v1/applications/{app_id}/transition",
+        headers=auth_headers,
         json={"status": "IN_VERIFICATION", "message": "Document re-uploaded"},
     )
     assert t4.status_code == 200
@@ -241,6 +248,7 @@ def test_transition_application_status_valid_flow(client, seeded_db):
     # 6. IN_VERIFICATION -> SANCTIONED
     t5 = client.post(
         f"/api/v1/applications/{app_id}/transition",
+        headers=auth_headers,
         json={"status": "SANCTIONED", "message": "Scholarship awarded"},
     )
     assert t5.status_code == 200
@@ -249,13 +257,14 @@ def test_transition_application_status_valid_flow(client, seeded_db):
     # 7. SANCTIONED -> COMPLETED
     t6 = client.post(
         f"/api/v1/applications/{app_id}/transition",
+        headers=auth_headers,
         json={"status": "COMPLETED", "message": "DBT funds disbursed"},
     )
     assert t6.status_code == 200
     assert t6.json()["status"] == "COMPLETED"
 
     # 8. Verify timeline reflects entire history in order
-    tl_resp = client.get(f"/api/v1/applications/{app_id}/timeline")
+    tl_resp = client.get(f"/api/v1/applications/{app_id}/timeline", headers=auth_headers)
     assert tl_resp.status_code == 200
     events = tl_resp.json()
     assert len(events) == 7
@@ -271,10 +280,11 @@ def test_transition_application_status_valid_flow(client, seeded_db):
     assert [e["status"] for e in events] == expected_order
 
 
-def test_transition_application_status_invalid_transition(client, seeded_db):
+def test_transition_application_status_invalid_transition(client, seeded_db, auth_headers):
     # 1. Create app (starts DRAFT)
     create_resp = client.post(
         "/api/v1/applications",
+        headers=auth_headers,
         json={
             "student_id": DEMO_STUDENT_ID,
             "scholarship_id": DEMO_SCHOLARSHIPS[0]["id"],
@@ -285,6 +295,7 @@ def test_transition_application_status_invalid_transition(client, seeded_db):
     # 2. Try illegal direct transition DRAFT -> SANCTIONED
     bad1 = client.post(
         f"/api/v1/applications/{app_id}/transition",
+        headers=auth_headers,
         json={"status": "SANCTIONED"},
     )
     assert bad1.status_code == 400
@@ -293,6 +304,7 @@ def test_transition_application_status_invalid_transition(client, seeded_db):
     # 3. Transition DRAFT -> WITHDRAWN (valid)
     good_withdraw = client.post(
         f"/api/v1/applications/{app_id}/transition",
+        headers=auth_headers,
         json={"status": "WITHDRAWN"},
     )
     assert good_withdraw.status_code == 200
@@ -300,15 +312,17 @@ def test_transition_application_status_invalid_transition(client, seeded_db):
     # 4. Try transition from terminal WITHDRAWN -> SUBMITTED (invalid)
     bad2 = client.post(
         f"/api/v1/applications/{app_id}/transition",
+        headers=auth_headers,
         json={"status": "SUBMITTED"},
     )
     assert bad2.status_code == 400
     assert "Cannot transition application from 'WITHDRAWN' to 'SUBMITTED'" in bad2.json()["detail"]
 
 
-def test_transition_application_status_invalid_status_string(client, seeded_db):
+def test_transition_application_status_invalid_status_string(client, seeded_db, auth_headers):
     create_resp = client.post(
         "/api/v1/applications",
+        headers=auth_headers,
         json={
             "student_id": DEMO_STUDENT_ID,
             "scholarship_id": DEMO_SCHOLARSHIPS[0]["id"],
@@ -318,24 +332,27 @@ def test_transition_application_status_invalid_status_string(client, seeded_db):
 
     resp = client.post(
         f"/api/v1/applications/{app_id}/transition",
+        headers=auth_headers,
         json={"status": "UNAPPROVED_STATUS_STRING"},
     )
     assert resp.status_code == 400
     assert "Invalid status 'UNAPPROVED_STATUS_STRING'" in resp.json()["detail"]
 
 
-def test_transition_application_status_nonexistent_application(client, seeded_db):
+def test_transition_application_status_nonexistent_application(client, seeded_db, admin_headers):
     resp = client.post(
         "/api/v1/applications/non-existent-app-id/transition",
+        headers=admin_headers,
         json={"status": "SUBMITTED"},
     )
     assert resp.status_code == 404
     assert resp.json()["detail"] == "Application not found"
 
 
-def test_transition_application_status_patch_alias(client, seeded_db):
+def test_transition_application_status_patch_alias(client, seeded_db, auth_headers):
     create_resp = client.post(
         "/api/v1/applications",
+        headers=auth_headers,
         json={
             "student_id": DEMO_STUDENT_ID,
             "scholarship_id": DEMO_SCHOLARSHIPS[0]["id"],
@@ -345,6 +362,7 @@ def test_transition_application_status_patch_alias(client, seeded_db):
 
     resp = client.patch(
         f"/api/v1/applications/{app_id}/status",
+        headers=auth_headers,
         json={"status": "SUBMITTED", "message": "Via patch alias"},
     )
     assert resp.status_code == 200
