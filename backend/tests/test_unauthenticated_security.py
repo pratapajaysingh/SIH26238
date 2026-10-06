@@ -125,9 +125,9 @@ def two_students_setup(client, seeded_db):
     seeded_db.add(user_a)
     seeded_db.commit()
     u_a = user_a.id
-    s_a = client.post("/api/v1/students", json={"user_id": u_a, "name": "A", "email": "student_a_sec@example.com"}).json()["id"]
     token_a = create_access_token({"sub": u_a})
     headers_a = {"Authorization": f"Bearer {token_a}"}
+    s_a = client.post("/api/v1/students", headers=headers_a, json={"user_id": u_a, "name": "A", "email": "student_a_sec@example.com"}).json()["id"]
 
     # Register and setup Student B
     user_b = User(
@@ -140,9 +140,9 @@ def two_students_setup(client, seeded_db):
     seeded_db.add(user_b)
     seeded_db.commit()
     u_b = user_b.id
-    s_b = client.post("/api/v1/students", json={"user_id": u_b, "name": "B", "email": "student_b_sec@example.com"}).json()["id"]
     token_b = create_access_token({"sub": u_b})
     headers_b = {"Authorization": f"Bearer {token_b}"}
+    s_b = client.post("/api/v1/students", headers=headers_b, json={"user_id": u_b, "name": "B", "email": "student_b_sec@example.com"}).json()["id"]
 
     # Create application for Student B
     sch_id = DEMO_SCHOLARSHIPS[0]["id"]

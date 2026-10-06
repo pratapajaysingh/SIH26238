@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from app.core.dependencies import get_db, get_current_user, get_current_user_optional
+from app.core.dependencies import get_db, get_current_user
 from app.models.user import User
 from app.schemas.student import StudentCreate, StudentResponse
 from app.services.student_service import (
@@ -17,14 +17,18 @@ router = APIRouter(prefix="/students", tags=["Students"])
 @router.post("/", response_model=StudentResponse, include_in_schema=False)
 def add_student_api(
     student: StudentCreate,
-    current_user: User | None = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    if current_user and student.user_id != current_user.id:
+    existing_student = get_student_by_user(db, current_user.id)
+    if existing_student:
         raise HTTPException(
-            status_code=403,
-            detail="Access denied: Cannot create student profile for another user",
+            status_code=409,
+            detail="Student profile already exists for this user"
         )
+
+    # Always set user_id = current_user.id, ignore any user_id in the payload
+    student.user_id = current_user.id
     result = add_student(db, student)
 
     if result == "USER_NOT_FOUND":
@@ -50,7 +54,15 @@ def add_student_api(
 
 @router.get("", response_model=list[StudentResponse])
 @router.get("/", response_model=list[StudentResponse], include_in_schema=False)
-def list_students_api(db: Session = Depends(get_db)):
+def list_students_api(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    if current_user.role.upper() != "ADMIN":
+        raise HTTPException(
+            status_code=403,
+            detail="Access denied: Admin role required to view all students",
+        )
     return list_students(db)
 
 

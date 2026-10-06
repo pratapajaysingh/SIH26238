@@ -7,8 +7,8 @@ from app.services.notification_service import (
 )
 
 
-def test_list_notifications_seeded(client, seeded_db):
-    response = client.get("/api/v1/notifications")
+def test_list_notifications_seeded(client, seeded_db, admin_headers):
+    response = client.get("/api/v1/notifications", headers=admin_headers)
     assert response.status_code == 200
     data = response.json()
     assert isinstance(data, list)
@@ -26,27 +26,27 @@ def test_list_notifications_seeded(client, seeded_db):
     assert "created_at" in item
 
 
-def test_list_notifications_by_student_and_endpoint(client, seeded_db):
-    # Query via query parameter
-    res1 = client.get(f"/api/v1/notifications?student_id={DEMO_STUDENT_ID}")
+def test_list_notifications_by_student_and_endpoint(client, seeded_db, admin_headers, auth_headers):
+    # Query via query parameter (Admin)
+    res1 = client.get(f"/api/v1/notifications?student_id={DEMO_STUDENT_ID}", headers=admin_headers)
     assert res1.status_code == 200
     data1 = res1.json()
     assert len(data1) >= 3
 
-    # Query via student sub-resource endpoint
-    res2 = client.get(f"/api/v1/students/{DEMO_STUDENT_ID}/notifications")
+    # Query via student sub-resource endpoint (Student self)
+    res2 = client.get(f"/api/v1/students/{DEMO_STUDENT_ID}/notifications", headers=auth_headers)
     assert res2.status_code == 200
     data2 = res2.json()
     assert len(data2) == len(data1)
 
     # Query with unread_only=true
-    res_unread = client.get(f"/api/v1/notifications?student_id={DEMO_STUDENT_ID}&unread_only=true")
+    res_unread = client.get(f"/api/v1/notifications?student_id={DEMO_STUDENT_ID}&unread_only=true", headers=admin_headers)
     assert res_unread.status_code == 200
     unreads = res_unread.json()
     assert all(not n["is_read"] for n in unreads)
 
 
-def test_create_notification_api(client, seeded_db):
+def test_create_notification_api(client, seeded_db, admin_headers):
     payload = {
         "student_id": DEMO_STUDENT_ID,
         "application_id": DEMO_APPLICATION_ID,
@@ -54,7 +54,7 @@ def test_create_notification_api(client, seeded_db):
         "message": "Your scholarship review has moved to manual inspection.",
         "category": "VERIFICATION",
     }
-    response = client.post("/api/v1/notifications", json=payload)
+    response = client.post("/api/v1/notifications", headers=admin_headers, json=payload)
     assert response.status_code == 201
     data = response.json()
     assert data["student_id"] == DEMO_STUDENT_ID
@@ -66,19 +66,19 @@ def test_create_notification_api(client, seeded_db):
     assert data["is_read"] is False
 
 
-def test_create_notification_student_not_found(client, seeded_db):
+def test_create_notification_student_not_found(client, seeded_db, admin_headers):
     payload = {
         "student_id": "non-existent-student-id",
         "title": "Test Title",
         "message": "Test Message",
         "category": "APPLICATION_UPDATE",
     }
-    response = client.post("/api/v1/notifications", json=payload)
+    response = client.post("/api/v1/notifications", headers=admin_headers, json=payload)
     assert response.status_code == 404
     assert response.json()["detail"] == "Student not found"
 
 
-def test_create_notification_application_not_found(client, seeded_db):
+def test_create_notification_application_not_found(client, seeded_db, admin_headers):
     payload = {
         "student_id": DEMO_STUDENT_ID,
         "application_id": "non-existent-app-id",
@@ -86,15 +86,16 @@ def test_create_notification_application_not_found(client, seeded_db):
         "message": "Test Message",
         "category": "APPLICATION_UPDATE",
     }
-    response = client.post("/api/v1/notifications", json=payload)
+    response = client.post("/api/v1/notifications", headers=admin_headers, json=payload)
     assert response.status_code == 404
     assert response.json()["detail"] == "Application not found"
 
 
-def test_mark_notification_as_read_api(client, seeded_db):
-    # Create fresh unread notification
+def test_mark_notification_as_read_api(client, seeded_db, admin_headers, auth_headers):
+    # Create fresh unread notification by admin
     create_res = client.post(
         "/api/v1/notifications",
+        headers=admin_headers,
         json={
             "student_id": DEMO_STUDENT_ID,
             "title": "Unread Notification",
@@ -106,19 +107,19 @@ def test_mark_notification_as_read_api(client, seeded_db):
     notif_id = create_res.json()["id"]
     assert create_res.json()["is_read"] is False
 
-    # Mark as read using PATCH
-    patch_res = client.patch(f"/api/v1/notifications/{notif_id}/read")
+    # Mark as read using PATCH by student owner
+    patch_res = client.patch(f"/api/v1/notifications/{notif_id}/read", headers=auth_headers)
     assert patch_res.status_code == 200
     assert patch_res.json()["is_read"] is True
 
     # Re-fetch via list and confirm is_read
-    list_res = client.get(f"/api/v1/notifications?student_id={DEMO_STUDENT_ID}")
+    list_res = client.get(f"/api/v1/notifications?student_id={DEMO_STUDENT_ID}", headers=admin_headers)
     item = next(n for n in list_res.json() if n["id"] == notif_id)
     assert item["is_read"] is True
 
 
-def test_mark_notification_not_found(client, seeded_db):
-    response = client.patch("/api/v1/notifications/non-existent-notif-id/read")
+def test_mark_notification_not_found(client, seeded_db, admin_headers):
+    response = client.patch("/api/v1/notifications/non-existent-notif-id/read", headers=admin_headers)
     assert response.status_code == 404
     assert response.json()["detail"] == "Notification not found"
 

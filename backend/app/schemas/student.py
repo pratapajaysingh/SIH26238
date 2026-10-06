@@ -2,7 +2,7 @@ from pydantic import BaseModel, EmailStr
 
 
 class StudentCreate(BaseModel):
-    user_id: str
+    user_id: str | None = None
     name: str
     email: EmailStr
 

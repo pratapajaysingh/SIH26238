@@ -30,7 +30,7 @@ def create_manual_review_api(
     current_user: User | None = Depends(get_current_user_optional),
     db: Session = Depends(get_db),
 ):
-    if current_user:
+    if current_user and current_user.role.upper() != "ADMIN":
         student = get_student_by_user(db, current_user.id)
         if not student:
             raise HTTPException(

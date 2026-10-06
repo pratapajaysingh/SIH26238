@@ -6,7 +6,7 @@ from app.models.user import User
 from app.seed import DEMO_SCHOLARSHIPS
 
 
-def test_golden_path_complete_journey(client, seeded_db):
+def test_golden_path_complete_journey(client, seeded_db, admin_headers):
 
     """Verify the complete user journey end-to-end:
     Register -> Login -> Profile -> Scholarships -> Eligibility -> Application -> 
@@ -37,6 +37,7 @@ def test_golden_path_complete_journey(client, seeded_db):
     # 4. Create student profile
     student_res = client.post(
         "/api/v1/students",
+        headers=auth_headers,
         json={
             "user_id": user_id,
             "name": "E2E Tribal Student",
@@ -62,6 +63,7 @@ def test_golden_path_complete_journey(client, seeded_db):
     # 7. Check eligibility for scheme
     elig_res = client.post(
         "/api/v1/eligibility/check",
+        headers=auth_headers,
         json={
             "student_id": student_id,
             "scholarship_id": target_sch_id,
@@ -115,6 +117,7 @@ def test_golden_path_complete_journey(client, seeded_db):
     # 12. Create verification record
     verif_res = client.post(
         f"/api/v1/applications/{app_id}/verifications",
+        headers=auth_headers,
         json={"document_id": doc_id},
     )
     assert verif_res.status_code == 200
@@ -122,7 +125,7 @@ def test_golden_path_complete_journey(client, seeded_db):
     assert verif_res.json()["status"] == "PENDING"
 
     # 13. Execute verification
-    exec_res = client.post(f"/api/v1/verifications/{verif_id}/execute")
+    exec_res = client.post(f"/api/v1/verifications/{verif_id}/execute", headers=auth_headers)
     assert exec_res.status_code == 200
     assert exec_res.json()["status"] == "VERIFIED"
 
@@ -148,6 +151,7 @@ def test_golden_path_complete_journey(client, seeded_db):
     # 17. Create Notification and retrieve via /notifications/me
     notif_create = client.post(
         "/api/v1/notifications",
+        headers=admin_headers,
         json={
             "student_id": student_id,
             "application_id": app_id,
@@ -194,14 +198,15 @@ def test_mismatch_verification_leads_to_deficiency_and_manual_review(client, see
     seeded_db.refresh(user)
     user_id = user.id
 
+    rev_token = create_access_token({"sub": str(user_id)})
+    rev_headers = {"Authorization": f"Bearer {rev_token}"}
+
     s_res = client.post(
         "/api/v1/students",
+        headers=rev_headers,
         json={"user_id": user_id, "name": "Review Applicant", "email": "review.app@example.com"},
     )
     student_id = s_res.json()["id"]
-
-    rev_token = create_access_token({"sub": str(user_id)})
-    rev_headers = {"Authorization": f"Bearer {rev_token}"}
 
     sch_res = client.get("/api/v1/scholarships")
     scholarship_id = sch_res.json()[0]["id"]
@@ -227,10 +232,10 @@ def test_mismatch_verification_leads_to_deficiency_and_manual_review(client, see
 
     # 3. Link and verify
     client.post(f"/api/v1/applications/{app_id}/documents", headers=rev_headers, json={"document_id": doc_id})
-    verif_res = client.post(f"/api/v1/applications/{app_id}/verifications", json={"document_id": doc_id})
+    verif_res = client.post(f"/api/v1/applications/{app_id}/verifications", headers=rev_headers, json={"document_id": doc_id})
     verif_id = verif_res.json()["id"]
 
-    exec_res = client.post(f"/api/v1/verifications/{verif_id}/execute")
+    exec_res = client.post(f"/api/v1/verifications/{verif_id}/execute", headers=rev_headers)
     assert exec_res.status_code == 200
     assert exec_res.json()["status"] == "MISMATCH"
 
@@ -242,7 +247,7 @@ def test_mismatch_verification_leads_to_deficiency_and_manual_review(client, see
     assert any(d["status"] == "MISMATCH" for d in deficiencies)
 
     # 5. Enqueue for Manual Review
-    mr_res = client.post(f"/api/v1/verifications/{verif_id}/manual-review")
+    mr_res = client.post(f"/api/v1/verifications/{verif_id}/manual-review", headers=rev_headers)
     assert mr_res.status_code == 200
     assert mr_res.json()["status"] == "OPEN"
     assert mr_res.json()["verification_id"] == verif_id
@@ -287,10 +292,10 @@ def test_data_isolation_between_authenticated_students(client, seeded_db):
     seeded_db.commit()
     seeded_db.refresh(user_a)
     user_a_id = user_a.id
-    sa_res = client.post("/api/v1/students", json={"user_id": user_a_id, "name": "Student A", "email": "a@example.com"})
-    student_a_id = sa_res.json()["id"]
     token_a = create_access_token({"sub": str(user_a_id)})
     headers_a = {"Authorization": f"Bearer {token_a}"}
+    sa_res = client.post("/api/v1/students", headers=headers_a, json={"user_id": user_a_id, "name": "Student A", "email": "a@example.com"})
+    student_a_id = sa_res.json()["id"]
 
     # Student B
     user_b = User(name="Student B", email="b@example.com", password=hash_password("UnusableSecret123!"), role="STUDENT")
@@ -298,10 +303,10 @@ def test_data_isolation_between_authenticated_students(client, seeded_db):
     seeded_db.commit()
     seeded_db.refresh(user_b)
     user_b_id = user_b.id
-    sb_res = client.post("/api/v1/students", json={"user_id": user_b_id, "name": "Student B", "email": "b@example.com"})
-    student_b_id = sb_res.json()["id"]
     token_b = create_access_token({"sub": str(user_b_id)})
     headers_b = {"Authorization": f"Bearer {token_b}"}
+    sb_res = client.post("/api/v1/students", headers=headers_b, json={"user_id": user_b_id, "name": "Student B", "email": "b@example.com"})
+    student_b_id = sb_res.json()["id"]
 
     # Create scholarship application for Student A and Student B
     sch_id = client.get("/api/v1/scholarships").json()[0]["id"]

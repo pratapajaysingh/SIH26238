@@ -24,23 +24,24 @@ def test_manual_review_lifecycle(client, seeded_db, auth_headers, admin_headers)
     # Create verification record
     v_res = client.post(
         f"/api/v1/applications/{DEMO_APPLICATION_ID}/verifications",
+        headers=auth_headers,
         json={"document_id": doc_id},
     )
     assert v_res.status_code == 200
     verif_id = v_res.json()["id"]
 
     # Attempt manual review before execution (status is PENDING, not MISMATCH)
-    early_review_res = client.post(f"/api/v1/verifications/{verif_id}/manual-review")
+    early_review_res = client.post(f"/api/v1/verifications/{verif_id}/manual-review", headers=auth_headers)
     assert early_review_res.status_code == 409
     assert early_review_res.json()["detail"] == "Verification record is not eligible for manual review"
 
     # Execute verification -> produces MISMATCH
-    exec_res = client.post(f"/api/v1/verifications/{verif_id}/execute")
+    exec_res = client.post(f"/api/v1/verifications/{verif_id}/execute", headers=auth_headers)
     assert exec_res.status_code == 200
     assert exec_res.json()["status"] == "MISMATCH"
 
     # Now enqueue for manual review
-    review_res = client.post(f"/api/v1/verifications/{verif_id}/manual-review")
+    review_res = client.post(f"/api/v1/verifications/{verif_id}/manual-review", headers=auth_headers)
     assert review_res.status_code == 200
     review_data = review_res.json()
     assert review_data["application_id"] == DEMO_APPLICATION_ID
@@ -48,7 +49,7 @@ def test_manual_review_lifecycle(client, seeded_db, auth_headers, admin_headers)
     assert review_data["status"] == "OPEN"
 
     # Subsequent attempt to queue again should return 409
-    dup_review_res = client.post(f"/api/v1/verifications/{verif_id}/manual-review")
+    dup_review_res = client.post(f"/api/v1/verifications/{verif_id}/manual-review", headers=auth_headers)
     assert dup_review_res.status_code == 409
 
     # 1. Verify student cannot access the manual review queue

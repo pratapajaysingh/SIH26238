@@ -3,12 +3,13 @@ from app.seed import DEMO_STUDENT_ID, DEMO_SCHOLARSHIPS, DEMO_APPLICATION_ID
 from app.models.application import Application
 
 
-def test_conflict_check_eligible_student(client, seeded_db):
+def test_conflict_check_eligible_student(client, seeded_db, admin_headers):
     """Student with no active applications for a different scheme is eligible."""
     # Student2 has no applications at all
     from app.seed import DEMO_STUDENT_ID_2
     response = client.post(
         "/api/v1/eligibility/conflict-check",
+        headers=admin_headers,
         json={
             "student_id": DEMO_STUDENT_ID_2,
             "scholarship_id": DEMO_SCHOLARSHIPS[0]["id"],
@@ -21,10 +22,11 @@ def test_conflict_check_eligible_student(client, seeded_db):
     assert data["evaluation_mode"] == "MOCK"
 
 
-def test_conflict_check_duplicate_application(client, seeded_db):
+def test_conflict_check_duplicate_application(client, seeded_db, admin_headers):
     """Same student, same scheme with active application → DUPLICATE_APPLICATION."""
     response = client.post(
         "/api/v1/eligibility/conflict-check",
+        headers=admin_headers,
         json={
             "student_id": DEMO_STUDENT_ID,
             "scholarship_id": DEMO_SCHOLARSHIPS[0]["id"],  # POST_MATRIC — has DRAFT app
@@ -37,12 +39,13 @@ def test_conflict_check_duplicate_application(client, seeded_db):
     assert data["existing_application_id"] is not None
 
 
-def test_conflict_check_sanctioned_conflict(client, seeded_db):
+def test_conflict_check_sanctioned_conflict(client, seeded_db, admin_headers):
     """Student with a SANCTIONED application for another scheme → blocked."""
     # DEMO_APPLICATION_ID_2 is SANCTIONED (PRE_MATRIC)
     # Trying to apply for NFST should be blocked
     response = client.post(
         "/api/v1/eligibility/conflict-check",
+        headers=admin_headers,
         json={
             "student_id": DEMO_STUDENT_ID,
             "scholarship_id": DEMO_SCHOLARSHIPS[4]["id"],  # NATIONAL_FELLOWSHIP_ST
@@ -54,7 +57,7 @@ def test_conflict_check_sanctioned_conflict(client, seeded_db):
     assert data["status"] in {"SANCTIONED_SCHEME_CONFLICT", "ACTIVE_APPLICATION_EXISTS", "DUPLICATE_APPLICATION", "PENDING_DEFICIENCY"}
 
 
-def test_conflict_check_terminal_rejected_allows_new(client, db_session, seeded_db):
+def test_conflict_check_terminal_rejected_allows_new(client, db_session, seeded_db, admin_headers):
     """Rejected/withdrawn application does NOT block new applications."""
     from app.seed import DEMO_STUDENT_ID_2
     # Create and reject an application for student2
@@ -68,6 +71,7 @@ def test_conflict_check_terminal_rejected_allows_new(client, db_session, seeded_
 
     response = client.post(
         "/api/v1/eligibility/conflict-check",
+        headers=admin_headers,
         json={
             "student_id": DEMO_STUDENT_ID_2,
             "scholarship_id": DEMO_SCHOLARSHIPS[0]["id"],
@@ -79,9 +83,10 @@ def test_conflict_check_terminal_rejected_allows_new(client, db_session, seeded_
     assert data["status"] == "ELIGIBLE"
 
 
-def test_conflict_check_student_not_found(client, seeded_db):
+def test_conflict_check_student_not_found(client, seeded_db, admin_headers):
     response = client.post(
         "/api/v1/eligibility/conflict-check",
+        headers=admin_headers,
         json={
             "student_id": "non-existent-student",
             "scholarship_id": DEMO_SCHOLARSHIPS[0]["id"],
@@ -90,9 +95,10 @@ def test_conflict_check_student_not_found(client, seeded_db):
     assert response.status_code == 404
 
 
-def test_conflict_check_scholarship_not_found(client, seeded_db):
+def test_conflict_check_scholarship_not_found(client, seeded_db, admin_headers):
     response = client.post(
         "/api/v1/eligibility/conflict-check",
+        headers=admin_headers,
         json={
             "student_id": DEMO_STUDENT_ID,
             "scholarship_id": "non-existent-scholarship",
@@ -101,7 +107,7 @@ def test_conflict_check_scholarship_not_found(client, seeded_db):
     assert response.status_code == 404
 
 
-def test_conflict_check_active_application_blocks_different_scheme(client, db_session, seeded_db):
+def test_conflict_check_active_application_blocks_different_scheme(client, db_session, seeded_db, admin_headers):
     """Active (SUBMITTED) application for one scheme blocks application to another."""
     from app.seed import DEMO_STUDENT_ID_2
     # Create SUBMITTED application for student2
@@ -115,6 +121,7 @@ def test_conflict_check_active_application_blocks_different_scheme(client, db_se
 
     response = client.post(
         "/api/v1/eligibility/conflict-check",
+        headers=admin_headers,
         json={
             "student_id": DEMO_STUDENT_ID_2,
             "scholarship_id": DEMO_SCHOLARSHIPS[1]["id"],

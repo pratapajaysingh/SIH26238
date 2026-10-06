@@ -8,13 +8,7 @@ import 'eligibility_repository.dart';
 /// ApiEligibilityRepository implements EligibilityRepository by delegating to ApiClient.
 /// Consumes:
 /// - POST /api/v1/eligibility/check
-/// Request body:
-/// ```json
-/// {
-///   "student_id": "uuid",
-///   "scholarship_id": "uuid"
-/// }
-/// ```
+/// - POST /api/v1/eligibility/conflict-check
 class ApiEligibilityRepository implements EligibilityRepository {
   final ApiClient apiClient;
 
@@ -25,27 +19,28 @@ class ApiEligibilityRepository implements EligibilityRepository {
     required String studentId,
     required String schemeId,
   }) async {
-    // If studentId is non-UUID format (like test mock ID 'TS2024S10023'),
-    // attempt to resolve authenticated student ID or default to seeded student
-    String effectiveStudentId = studentId;
-    if (!studentId.contains('-')) {
-      try {
-        final sRes = await apiClient.get<Map<String, dynamic>>(ApiConstants.studentsMe);
-        if (sRes.success && sRes.data != null && sRes.data!['id'] != null) {
-          effectiveStudentId = sRes.data!['id'].toString();
-        } else {
-          effectiveStudentId = '00000000-0000-0000-0000-000000000002';
-        }
-      } catch (_) {
-        effectiveStudentId = '00000000-0000-0000-0000-000000000002';
-      }
+    // In live mode, resolve the authentic student ID directly from GET /students/me
+    final sRes = await apiClient.get<Map<String, dynamic>>(ApiConstants.studentsMe);
+    if (!sRes.success || sRes.data == null || sRes.data!['id'] == null || sRes.data!['id'].toString().isEmpty) {
+      throw ApiException(
+        sRes.message.isNotEmpty
+            ? sRes.message
+            : 'Active student record not found for authenticated user',
+      );
     }
+    final String effectiveStudentId = sRes.data!['id'].toString();
+
+    // Scheme ID must be the API's own ID; no guessing or fallback
+    if (schemeId.trim().isEmpty) {
+      throw ApiException('Scheme ID is required for eligibility check');
+    }
+    final String effectiveSchemeId = schemeId;
 
     final response = await apiClient.post<EligibilityCheckResult>(
       ApiConstants.eligibilityCheck,
       body: {
         'student_id': effectiveStudentId,
-        'scholarship_id': schemeId,
+        'scholarship_id': effectiveSchemeId,
       },
       fromJson: (json) =>
           EligibilityCheckResult.fromJson(json as Map<String, dynamic>),
@@ -67,37 +62,22 @@ class ApiEligibilityRepository implements EligibilityRepository {
     required String studentId,
     required String schemeId,
   }) async {
-    // Resolve studentId if not UUID
-    String effectiveStudentId = studentId;
-    if (!studentId.contains('-')) {
-      try {
-        final sRes = await apiClient.get<Map<String, dynamic>>(ApiConstants.studentsMe);
-        if (sRes.success && sRes.data != null && sRes.data!['id'] != null) {
-          effectiveStudentId = sRes.data!['id'].toString();
-        } else {
-          effectiveStudentId = '00000000-0000-0000-0000-000000000002';
-        }
-      } catch (_) {
-        effectiveStudentId = '00000000-0000-0000-0000-000000000002';
-      }
+    // In live mode, resolve the authentic student ID directly from GET /students/me
+    final sRes = await apiClient.get<Map<String, dynamic>>(ApiConstants.studentsMe);
+    if (!sRes.success || sRes.data == null || sRes.data!['id'] == null || sRes.data!['id'].toString().isEmpty) {
+      throw ApiException(
+        sRes.message.isNotEmpty
+            ? sRes.message
+            : 'Active student record not found for authenticated user',
+      );
     }
+    final String effectiveStudentId = sRes.data!['id'].toString();
 
-    // Resolve schemeId if not UUID
-    String effectiveSchemeId = schemeId;
-    if (!schemeId.contains('-')) {
-      try {
-        final schRes = await apiClient.get<List<dynamic>>(ApiConstants.scholarships);
-        if (schRes.success && schRes.data != null && schRes.data!.isNotEmpty) {
-          final matched = schRes.data!.firstWhere(
-            (s) =>
-                (s['code']?.toString().toUpperCase() == schemeId.toUpperCase()) ||
-                (s['id']?.toString() == schemeId),
-            orElse: () => schRes.data!.first,
-          );
-          effectiveSchemeId = matched['id'].toString();
-        }
-      } catch (_) {}
+    // Scheme ID must be the API's own ID; no guessing or fallback
+    if (schemeId.trim().isEmpty) {
+      throw ApiException('Scheme ID is required for conflict check');
     }
+    final String effectiveSchemeId = schemeId;
 
     final response = await apiClient.post<ConflictCheckResult>(
       ApiConstants.eligibilityConflictCheck,
@@ -120,4 +100,3 @@ class ApiEligibilityRepository implements EligibilityRepository {
     );
   }
 }
-

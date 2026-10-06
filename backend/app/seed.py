@@ -401,7 +401,10 @@ def seed_database(db: Session, reset: bool = False) -> dict:
         db.query(User).filter(User.id.in_([DEMO_USER_ID, DEMO_USER_ID_2, DEMO_USER_ID_3, DEMO_USER_ID_4, DEMO_ADMIN_USER_ID])).delete(synchronize_session=False)
         if admin_email:
             db.query(User).filter(User.email == admin_email).delete(synchronize_session=False)
-        db.query(User).filter(User.email == "admin.mota@tribalsetu.gov.in").delete(synchronize_session=False)
+        legacy_u = db.query(User).filter(User.email == "admin.mota@tribalsetu.gov.in").first()
+        if legacy_u and (not admin_email or admin_email != "admin.mota@tribalsetu.gov.in"):
+            legacy_u.role = "STUDENT"
+            legacy_u.password = hash_password(secrets.token_urlsafe(32))
         db.commit()
 
     created_counts = {
@@ -454,16 +457,11 @@ def seed_database(db: Session, reset: bool = False) -> dict:
             u.password = unusable_password
         users[uid] = u
 
-    # Delete legacy admin.mota@tribalsetu.gov.in if unreferenced, otherwise demote to STUDENT
+    # Always demote legacy admin.mota@tribalsetu.gov.in to STUDENT with a random password; never delete it
     legacy_admin = db.query(User).filter(User.email == "admin.mota@tribalsetu.gov.in").first()
     if legacy_admin and (not admin_email or admin_email != "admin.mota@tribalsetu.gov.in"):
-        has_fk_ref = db.query(Student).filter(Student.user_id == legacy_admin.id).first() is not None
-        if not has_fk_ref:
-            db.delete(legacy_admin)
-            db.flush()
-        else:
-            legacy_admin.role = "STUDENT"
-            legacy_admin.password = hash_password(secrets.token_urlsafe(32))
+        legacy_admin.role = "STUDENT"
+        legacy_admin.password = hash_password(secrets.token_urlsafe(32))
 
     # 2. Students
     student_definitions = [

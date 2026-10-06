@@ -133,13 +133,14 @@ def test_get_application_deficiencies_with_issues(client, seeded_db, auth_header
     # Create verification record
     v_res = client.post(
         f"/api/v1/applications/{DEMO_APPLICATION_ID}/verifications",
+        headers=auth_headers,
         json={"document_id": doc_id},
     )
     assert v_res.status_code == 200
     verif_id = v_res.json()["id"]
 
     # Execute verification -> transitions to MISMATCH
-    exec_res = client.post(f"/api/v1/verifications/{verif_id}/execute")
+    exec_res = client.post(f"/api/v1/verifications/{verif_id}/execute", headers=auth_headers)
     assert exec_res.status_code == 200
     assert exec_res.json()["status"] == "MISMATCH"
 

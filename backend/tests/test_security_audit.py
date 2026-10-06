@@ -27,9 +27,14 @@ def auth_headers_student_b(client, seeded_db):
     seeded_db.commit()
     user_b_id = user_b.id
 
-    # 2. Add Student Profile B
+    # 2. Create auth token for Student B
+    token = create_access_token({"sub": user_b_id, "email": "student.b@example.com"})
+    headers = {"Authorization": f"Bearer {token}"}
+
+    # 3. Add Student Profile B
     student_res = client.post(
         "/api/v1/students",
+        headers=headers,
         json={
             "user_id": user_b_id,
             "name": "Student B",
@@ -38,10 +43,6 @@ def auth_headers_student_b(client, seeded_db):
     )
     assert student_res.status_code == 200
     student_b_id = student_res.json()["id"]
-
-    # 3. Create auth token for Student B
-    token = create_access_token({"sub": user_b_id, "email": "student.b@example.com"})
-    headers = {"Authorization": f"Bearer {token}"}
 
     # 4. Create an application owned by Student B
     app_res = client.post(
@@ -233,14 +234,15 @@ def test_cross_student_notification_creation_blocked(client, seeded_db, auth_hea
         },
     )
     assert response.status_code == 403
-    assert "Students cannot send notifications to other students" in response.json()["detail"]
+    assert "Admin role required to create notifications" in response.json()["detail"]
 
 
-def test_cross_student_notification_read_blocked(client, seeded_db, auth_headers_student_b):
+def test_cross_student_notification_read_blocked(client, seeded_db, auth_headers_student_b, admin_headers):
     """Authenticated Student B cannot mark Student A's notification as read."""
-    # First create a notification for Student A (unauthenticated/system)
+    # First create a notification for Student A by Admin
     notif_res = client.post(
         "/api/v1/notifications",
+        headers=admin_headers,
         json={
             "student_id": DEMO_STUDENT_ID,
             "title": "A Notification",
@@ -273,29 +275,29 @@ def test_cross_student_notification_get_blocked(client, seeded_db, auth_headers_
     assert res_path.status_code == 403
     assert "Cannot access another student's notifications" in res_path.json()["detail"]
 
-    # Query param check: /notifications?student_id={student_id}
+    # Query param check: /notifications?student_id={student_id} (Admin only)
     res_query = client.get(
         f"/api/v1/notifications?student_id={DEMO_STUDENT_ID}",
         headers=headers,
     )
     assert res_query.status_code == 403
-    assert "Cannot access another student's notifications" in res_query.json()["detail"]
+    assert "Admin role required to view global notifications" in res_query.json()["detail"]
 
 
 def test_cross_user_student_profile_creation_blocked(client, seeded_db, auth_headers_student_b):
-    """Authenticated User B cannot create a student profile for User A."""
+    """Authenticated User B already having a profile gets 409 when trying to create another."""
     headers = auth_headers_student_b["headers"]
     response = client.post(
         "/api/v1/students",
         headers=headers,
         json={
-            "user_id": DEMO_USER_ID,  # Belongs to User A
+            "user_id": DEMO_USER_ID,  # Even with different user_id, user_id is ignored and existing profile triggers 409
             "name": "Hijacked Profile",
             "email": "hijack@example.com",
         },
     )
-    assert response.status_code == 403
-    assert "Cannot create student profile for another user" in response.json()["detail"]
+    assert response.status_code == 409
+    assert "Student profile already exists for this user" in response.json()["detail"]
 
 
 # ---------------------------------------------------------------------------
@@ -403,3 +405,162 @@ def test_admin_can_access_student_digilocker_documents(client, seeded_db, admin_
     )
     assert res.status_code == 200
     assert isinstance(res.json(), list)
+
+
+# ---------------------------------------------------------------------------
+# Strict Security Lockdown Tests: Endpoint Role Verification
+# ---------------------------------------------------------------------------
+
+def test_unauthenticated_get_students_returns_401_student_gets_403(client, seeded_db, auth_headers):
+    """Unauthenticated GET /students returns 401, STUDENT gets 403."""
+    res_unauth = client.get("/api/v1/students")
+    assert res_unauth.status_code == 401
+
+    res_student = client.get("/api/v1/students", headers=auth_headers)
+    assert res_student.status_code == 403
+    assert "Admin role required" in res_student.json().get("detail", "")
+
+
+def test_unauthenticated_post_notifications_returns_401_student_gets_403(client, seeded_db, auth_headers):
+    """Unauthenticated POST /notifications returns 401, STUDENT gets 403."""
+    payload = {
+        "student_id": DEMO_STUDENT_ID,
+        "title": "Alert",
+        "message": "Notice",
+        "type": "SYSTEM",
+    }
+    res_unauth = client.post("/api/v1/notifications", json=payload)
+    assert res_unauth.status_code == 401
+
+    res_student = client.post("/api/v1/notifications", headers=auth_headers, json=payload)
+    assert res_student.status_code == 403
+    assert "Admin role required" in res_student.json().get("detail", "")
+
+
+def test_student_a_cannot_read_or_mark_read_student_b_notifications(
+    client, seeded_db, auth_headers, auth_headers_student_b, admin_headers
+):
+    """Student A cannot read or mark-read student B's notifications (403)."""
+    student_b_id = auth_headers_student_b["student_id"]
+    # Admin creates a notification for student B
+    create_res = client.post(
+        "/api/v1/notifications",
+        headers=admin_headers,
+        json={
+            "student_id": student_b_id,
+            "title": "Private for B",
+            "message": "Secret message for B",
+            "type": "APPLICATION_UPDATE",
+        },
+    )
+    assert create_res.status_code == 201
+    notif_b_id = create_res.json()["id"]
+
+    # Student A attempts to read student B's notifications
+    read_res = client.get(
+        f"/api/v1/students/{student_b_id}/notifications",
+        headers=auth_headers,
+    )
+    assert read_res.status_code == 403
+    assert "Cannot access another student's notifications" in read_res.json().get("detail", "")
+
+    # Student A attempts to mark read student B's notification
+    mark_res = client.patch(
+        f"/api/v1/notifications/{notif_b_id}/read",
+        headers=auth_headers,
+    )
+    assert mark_res.status_code == 403
+    assert "Cannot modify another student's notification" in mark_res.json().get("detail", "")
+
+
+def test_student_a_cannot_list_verifications_on_student_b_application(
+    client, seeded_db, auth_headers, auth_headers_student_b
+):
+    """Student A cannot list verifications on student B's application (403)."""
+    app_b_id = auth_headers_student_b["application_id"]
+    res = client.get(
+        f"/api/v1/applications/{app_b_id}/verifications",
+        headers=auth_headers,
+    )
+    assert res.status_code == 403
+    assert "Cannot view verifications on another student's application" in res.json().get("detail", "")
+
+
+def test_add_student_api_ignores_user_id_in_payload(client, seeded_db):
+    """add_student_api ignores a user_id in the payload and sets current_user.id."""
+    import uuid
+    from app.models.user import User
+
+    # Create fresh User C
+    user_c = User(
+        id=str(uuid.uuid4()),
+        email="student_c_isolation@example.com",
+        name="Student C",
+        password="secret_password",
+        role="STUDENT",
+    )
+    seeded_db.add(user_c)
+    seeded_db.commit()
+
+    token_c = create_access_token({"sub": user_c.id, "email": user_c.email})
+    headers_c = {"Authorization": f"Bearer {token_c}"}
+
+    # Attempt to pass an arbitrary forged user_id in payload
+    forged_user_id = str(uuid.uuid4())
+    res = client.post(
+        "/api/v1/students",
+        headers=headers_c,
+        json={
+            "user_id": forged_user_id,
+            "name": "Student C Real",
+            "email": "student_c_isolation@example.com",
+        },
+    )
+    assert res.status_code == 200
+    data = res.json()
+    assert data["user_id"] == user_c.id
+    assert data["user_id"] != forged_user_id
+
+
+def test_second_add_student_api_for_same_user_returns_409(client, seeded_db):
+    """Second add_student_api for same user returns 409."""
+    import uuid
+    from app.models.user import User
+
+    # Create fresh User D
+    user_d = User(
+        id=str(uuid.uuid4()),
+        email="student_d_dup@example.com",
+        name="Student D",
+        password="secret_password",
+        role="STUDENT",
+    )
+    seeded_db.add(user_d)
+    seeded_db.commit()
+
+    token_d = create_access_token({"sub": user_d.id, "email": user_d.email})
+    headers_d = {"Authorization": f"Bearer {token_d}"}
+
+    # First student profile creation
+    res1 = client.post(
+        "/api/v1/students",
+        headers=headers_d,
+        json={
+            "name": "Student D",
+            "email": "student_d_dup@example.com",
+        },
+    )
+    assert res1.status_code == 200
+
+    # Second student profile creation for the same authenticated user
+    res2 = client.post(
+        "/api/v1/students",
+        headers=headers_d,
+        json={
+            "name": "Student D Duplicate",
+            "email": "student_d_dup@example.com",
+        },
+    )
+    assert res2.status_code == 409
+    assert "Student profile already exists for this user" in res2.json().get("detail", "")
+

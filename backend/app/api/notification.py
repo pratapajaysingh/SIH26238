@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.core.dependencies import get_current_user, get_current_user_optional, get_db
+from app.core.dependencies import get_current_user, get_db
 from app.models.user import User
 
 from app.schemas.notification import NotificationCreate, NotificationResponse
@@ -36,21 +36,14 @@ def get_my_notifications_api(
 def get_notifications_api(
     student_id: str | None = None,
     unread_only: bool = False,
-    current_user: User | None = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    if current_user:
-        student = get_student_by_user(db, current_user.id)
-        if student_id is None:
-            if student:
-                student_id = student.id
-            else:
-                return []
-        elif not student or student_id != student.id:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Access denied: Cannot access another student's notifications",
-            )
+    if current_user.role.upper() != "ADMIN":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied: Admin role required to view global notifications",
+        )
 
     result = list_notifications(db, student_id=student_id, unread_only=unread_only)
     if result == "STUDENT_NOT_FOUND":
@@ -67,10 +60,10 @@ def get_notifications_api(
 def get_student_notifications_api(
     student_id: str,
     unread_only: bool = False,
-    current_user: User | None = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    if current_user:
+    if current_user.role.upper() != "ADMIN":
         student = get_student_by_user(db, current_user.id)
         if not student or student_id != student.id:
             raise HTTPException(
@@ -93,18 +86,19 @@ def get_student_notifications_api(
 @router.post("/notifications/{notification_id}/read/", response_model=NotificationResponse, include_in_schema=False)
 def mark_notification_read_api(
     notification_id: str,
-    current_user: User | None = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    if current_user:
+    notif = get_notification_by_id(db, notification_id)
+    if not notif:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Notification not found",
+        )
+
+    if current_user.role.upper() != "ADMIN":
         student = get_student_by_user(db, current_user.id)
-        if not student:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Access denied: No student profile associated with user",
-            )
-        notif = get_notification_by_id(db, notification_id)
-        if notif and notif.student_id != student.id:
+        if not student or notif.student_id != student.id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Access denied: Cannot modify another student's notification",
@@ -123,16 +117,14 @@ def mark_notification_read_api(
 @router.post("/notifications/", response_model=NotificationResponse, status_code=status.HTTP_201_CREATED, include_in_schema=False)
 def create_notification_api(
     payload: NotificationCreate,
-    current_user: User | None = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    if current_user:
-        student = get_student_by_user(db, current_user.id)
-        if not student or payload.student_id != student.id:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Access denied: Students cannot send notifications to other students",
-            )
+    if current_user.role.upper() != "ADMIN":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied: Admin role required to create notifications",
+        )
 
     result = create_notification(db, payload)
     if result == "STUDENT_NOT_FOUND":
