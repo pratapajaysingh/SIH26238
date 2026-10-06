@@ -1,5 +1,8 @@
+import os
 import pytest
 from fastapi.testclient import TestClient
+
+os.environ.setdefault("ADMIN_EMAIL", "admin.mota@tribalsetu.gov.in")
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from app.core.dependencies import get_db, get_current_user_optional
+from app.core.dependencies import get_db, get_current_user
 from app.models.user import User
 from app.schemas.digilocker import MockDigiLockerDocument, MockDigiLockerImportRequest
 from app.schemas.document import DocumentResponse
@@ -25,10 +25,10 @@ router = APIRouter(tags=["DigiLocker"])
 )
 def list_digilocker_documents_api(
     student_id: str,
-    current_user: User | None = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    if current_user:
+    if current_user.role.upper() != "ADMIN":
         student = get_student_by_user(db, current_user.id)
         if not student or student_id != student.id:
             raise HTTPException(
@@ -59,10 +59,10 @@ def list_digilocker_documents_api(
 def import_digilocker_document_api(
     student_id: str,
     payload: MockDigiLockerImportRequest,
-    current_user: User | None = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    if current_user:
+    if current_user.role.upper() != "ADMIN":
         student = get_student_by_user(db, current_user.id)
         if not student or student_id != student.id:
             raise HTTPException(

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from app.core.dependencies import get_db, get_current_user_optional
+from app.core.dependencies import get_db, get_current_user, get_current_user_optional
 from app.models.user import User
 from app.repositories.application_repository import get_application_by_id
 from app.repositories.verification_repository import get_verification_by_id
@@ -79,10 +79,10 @@ def create_manual_review_api(
     include_in_schema=False,
 )
 def list_manual_reviews_api(
-    current_user: User | None = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    if current_user and getattr(current_user, "role", "STUDENT") == "STUDENT":
+    if current_user.role.upper() != "ADMIN":
         raise HTTPException(
             status_code=403,
             detail="Access denied: Student accounts cannot access the manual review queue",
@@ -102,10 +102,10 @@ def list_manual_reviews_api(
 def decide_manual_review_api(
     review_id: str,
     payload: ManualReviewDecisionRequest,
-    current_user: User | None = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    if current_user and getattr(current_user, "role", "STUDENT") == "STUDENT":
+    if current_user.role.upper() != "ADMIN":
         raise HTTPException(
             status_code=403,
             detail="Access denied: Student accounts cannot resolve manual reviews",

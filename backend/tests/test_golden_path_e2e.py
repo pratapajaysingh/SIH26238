@@ -1,6 +1,8 @@
 """End-to-end integration and golden-path tests for TribalSetu backend."""
 
 import pytest
+from app.core.security import create_access_token, hash_password
+from app.models.user import User
 from app.seed import DEMO_SCHOLARSHIPS
 
 
@@ -10,30 +12,20 @@ def test_golden_path_complete_journey(client, seeded_db):
     Register -> Login -> Profile -> Scholarships -> Eligibility -> Application -> 
     Document Link -> Verification -> Status -> Deficiencies -> Payment -> Notifications -> JAGO.
     """
-    # 1. Register User
-    reg_res = client.post(
-        "/api/v1/users",
-        json={
-            "name": "E2E Tribal Student",
-            "email": "e2e.student@example.com",
-            "password": "E2EPassword123!",
-        },
+    # 1. Setup User in DB
+    user = User(
+        name="E2E Tribal Student",
+        email="e2e.student@example.com",
+        password=hash_password("UnusableSecret123!"),
+        role="STUDENT",
     )
-    assert reg_res.status_code == 200
-    user_id = reg_res.json()["id"]
-    assert "password" not in reg_res.json()
+    seeded_db.add(user)
+    seeded_db.commit()
+    seeded_db.refresh(user)
+    user_id = user.id
 
-    # 2. Login to get JWT Bearer token
-    login_res = client.post(
-        "/api/v1/auth/login",
-        json={
-            "email": "e2e.student@example.com",
-            "password": "E2EPassword123!",
-        },
-    )
-    assert login_res.status_code == 200
-    token = login_res.json()["access_token"]
-    assert login_res.json()["token_type"] == "bearer"
+    # 2. Authenticate to get JWT Bearer token
+    token = create_access_token({"sub": str(user_id)})
     auth_headers = {"Authorization": f"Bearer {token}"}
 
     # 3. Verify user profile via /users/me
@@ -185,17 +177,22 @@ def test_golden_path_complete_journey(client, seeded_db):
     assert jago_data["data"]["id"] == app_id
 
 
-def test_mismatch_verification_leads_to_deficiency_and_manual_review(client, seeded_db):
+def test_mismatch_verification_leads_to_deficiency_and_manual_review(client, seeded_db, admin_headers):
     """Verify document mismatch workflow:
     Upload TEST_MISMATCH -> Verify -> Status becomes MISMATCH -> Deficiencies endpoint flags it ->
     Enqueue for Manual Review -> Review is queued as OPEN.
     """
     # 1. Setup Student and Application
-    u_res = client.post(
-        "/api/v1/users",
-        json={"name": "Review Applicant", "email": "review.app@example.com", "password": "Password123!"},
+    user = User(
+        name="Review Applicant",
+        email="review.app@example.com",
+        password=hash_password("UnusableSecret123!"),
+        role="STUDENT",
     )
-    user_id = u_res.json()["id"]
+    seeded_db.add(user)
+    seeded_db.commit()
+    seeded_db.refresh(user)
+    user_id = user.id
 
     s_res = client.post(
         "/api/v1/students",
@@ -203,11 +200,7 @@ def test_mismatch_verification_leads_to_deficiency_and_manual_review(client, see
     )
     student_id = s_res.json()["id"]
 
-    login_res = client.post(
-        "/api/v1/auth/login",
-        json={"email": "review.app@example.com", "password": "Password123!"},
-    )
-    rev_token = login_res.json()["access_token"]
+    rev_token = create_access_token({"sub": str(user_id)})
     rev_headers = {"Authorization": f"Bearer {rev_token}"}
 
     sch_res = client.get("/api/v1/scholarships")
@@ -255,7 +248,7 @@ def test_mismatch_verification_leads_to_deficiency_and_manual_review(client, see
     assert mr_res.json()["verification_id"] == verif_id
 
     # 6. List manual reviews
-    queue_res = client.get("/api/v1/manual-reviews")
+    queue_res = client.get("/api/v1/manual-reviews", headers=admin_headers)
     assert queue_res.status_code == 200
     assert any(r["verification_id"] == verif_id for r in queue_res.json())
 
@@ -289,19 +282,25 @@ def test_data_isolation_between_authenticated_students(client, seeded_db):
 
     """Verify strict data ownership: Student A cannot view Student B's data."""
     # Student A
-    ua_res = client.post("/api/v1/users", json={"name": "Student A", "email": "a@example.com", "password": "PasswordA1!"})
-    user_a_id = ua_res.json()["id"]
+    user_a = User(name="Student A", email="a@example.com", password=hash_password("UnusableSecret123!"), role="STUDENT")
+    seeded_db.add(user_a)
+    seeded_db.commit()
+    seeded_db.refresh(user_a)
+    user_a_id = user_a.id
     sa_res = client.post("/api/v1/students", json={"user_id": user_a_id, "name": "Student A", "email": "a@example.com"})
     student_a_id = sa_res.json()["id"]
-    token_a = client.post("/api/v1/auth/login", json={"email": "a@example.com", "password": "PasswordA1!"}).json()["access_token"]
+    token_a = create_access_token({"sub": str(user_a_id)})
     headers_a = {"Authorization": f"Bearer {token_a}"}
 
     # Student B
-    ub_res = client.post("/api/v1/users", json={"name": "Student B", "email": "b@example.com", "password": "PasswordB1!"})
-    user_b_id = ub_res.json()["id"]
+    user_b = User(name="Student B", email="b@example.com", password=hash_password("UnusableSecret123!"), role="STUDENT")
+    seeded_db.add(user_b)
+    seeded_db.commit()
+    seeded_db.refresh(user_b)
+    user_b_id = user_b.id
     sb_res = client.post("/api/v1/students", json={"user_id": user_b_id, "name": "Student B", "email": "b@example.com"})
     student_b_id = sb_res.json()["id"]
-    token_b = client.post("/api/v1/auth/login", json={"email": "b@example.com", "password": "PasswordB1!"}).json()["access_token"]
+    token_b = create_access_token({"sub": str(user_b_id)})
     headers_b = {"Authorization": f"Bearer {token_b}"}
 
     # Create scholarship application for Student A and Student B

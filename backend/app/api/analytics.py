@@ -9,7 +9,7 @@ from pydantic import BaseModel
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.core.dependencies import get_db, get_current_user_optional
+from app.core.dependencies import get_db, get_current_user
 from app.models.user import User
 from app.models.student import Student
 from app.models.notification import Notification
@@ -32,9 +32,9 @@ class OutreachRequest(BaseModel):
     message: str = "Ministry of Tribal Affairs has identified you as potentially eligible for scholarship schemes. Open TribalSetu to apply."
 
 
-def _assert_admin_or_unauthenticated(current_user: User | None) -> None:
+def _assert_admin(current_user: User) -> None:
     """Enforces admin role guard: authenticated students are rejected with 403."""
-    if current_user and getattr(current_user, "role", "STUDENT") == "STUDENT":
+    if current_user.role.upper() != "ADMIN":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Access denied: Admin role required for ministry analytics",
@@ -44,13 +44,13 @@ def _assert_admin_or_unauthenticated(current_user: User | None) -> None:
 @router.get("/unreached-beneficiaries")
 @router.get("/unreached-beneficiaries/", include_in_schema=False)
 def get_unreached_beneficiaries_api(
-    current_user: User | None = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
 ):
     """Identify ST students who are enrolled but not receiving scholarship benefits.
     
     PROTOTYPE: Uses mock UDISE+/APAAR/OTR data. No real government APIs are called.
     """
-    _assert_admin_or_unauthenticated(current_user)
+    _assert_admin(current_user)
     return {
         "results": get_unreached_only(),
         "summary": get_unreached_summary(),
@@ -61,13 +61,13 @@ def get_unreached_beneficiaries_api(
 @router.get("/unreached-beneficiaries/all")
 @router.get("/unreached-beneficiaries/all/", include_in_schema=False)
 def get_all_beneficiary_matching_api(
-    current_user: User | None = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
 ):
     """Full matching results for all enrolled students (matched + unreached).
     
     PROTOTYPE: Uses mock UDISE+/APAAR/OTR data. No real government APIs are called.
     """
-    _assert_admin_or_unauthenticated(current_user)
+    _assert_admin(current_user)
     return {
         "results": identify_unreached_beneficiaries(),
         "summary": get_unreached_summary(),
@@ -78,7 +78,7 @@ def get_all_beneficiary_matching_api(
 @router.get("/dashboard")
 @router.get("/dashboard/", include_in_schema=False)
 def get_dashboard_analytics_api(
-    current_user: User | None = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """Ministry-side dashboard analytics.
@@ -88,7 +88,7 @@ def get_dashboard_analytics_api(
     
     PROTOTYPE: Uses mock/demo data.
     """
-    _assert_admin_or_unauthenticated(current_user)
+    _assert_admin(current_user)
     return get_dashboard_analytics(db)
 
 
@@ -96,11 +96,11 @@ def get_dashboard_analytics_api(
 @router.post("/unreached-beneficiaries/outreach/", response_model=NotificationResponse, status_code=status.HTTP_201_CREATED, include_in_schema=False)
 def send_outreach_notification_api(
     payload: OutreachRequest,
-    current_user: User | None = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """Dispatch scholarship awareness outreach notification to an unreached ST student."""
-    _assert_admin_or_unauthenticated(current_user)
+    _assert_admin(current_user)
 
     target_student: Student | None = None
     if payload.student_id:

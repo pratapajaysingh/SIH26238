@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
 
-from app.core.config import get_cors_origins
+from app.core.config import get_cors_origins, assert_production_config
 from app.core.database import engine
 from app.api.auth import router as auth_router
 from app.api.student import router as student_router
@@ -92,18 +92,12 @@ def init_db_schema(force: bool = False) -> None:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup tasks
-    pass
+    assert_production_config()
     yield
     # Shutdown tasks
 
 
 app = FastAPI(title="TribalSetu API", lifespan=lifespan)
-
-from app.core.config import assert_production_config
-
-@app.on_event("startup")
-def _validate_config() -> None:
-    assert_production_config()
 
 # Safe CORS configuration for development
 app.add_middleware(
@@ -120,7 +114,7 @@ async def global_exception_handler(request: Request, exc: Exception):
     logger.error(f"Unhandled error on {request.method} {request.url.path}: {exc}", exc_info=True)
     return JSONResponse(
         status_code=500,
-        content={"detail": "Internal server error", "message": str(exc)},
+        content={"detail": "Internal server error"},
     )
 
 
@@ -192,18 +186,6 @@ def api_v1_health():
     return {"status": "ok"}
 
 
-@app.get("/api/v1/health/tables")
-def health_tables():
-    from sqlalchemy import inspect
-    inspector = inspect(engine)
-    tables = inspector.get_table_names()
-    return {
-        "status": "ok",
-        "tables_count": len(tables),
-        "tables": tables,
-    }
-
-
 @app.get("/api/v1/health/jago")
 def health_jago():
     from app.services.jago_llm_service import JagoLLMService, GENAI_AVAILABLE
@@ -214,26 +196,6 @@ def health_jago():
         "genai_available": GENAI_AVAILABLE,
         "model": llm.model_name,
     }
-
-
-@app.post("/api/v1/admin/init-db")
-def admin_init_db():
-    try:
-        init_db_schema(force=True)
-        from sqlalchemy import inspect
-        inspector = inspect(engine)
-        tables = inspector.get_table_names()
-        return {
-            "status": "ok",
-            "message": "Database schema and seed initialized successfully",
-            "tables_count": len(tables),
-            "tables": tables,
-        }
-    except Exception as exc:
-        return JSONResponse(
-            status_code=500,
-            content={"status": "error", "message": str(exc)},
-        )
 
 
 if __name__ == "__main__":

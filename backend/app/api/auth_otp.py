@@ -94,7 +94,7 @@ def verify_otp(payload: OtpVerifyIn, db: Session = Depends(get_db)):
 
     user = _get_or_create_user(db, payload.identifier.strip().lower())
 
-    access = create_access_token({"sub": str(user.id), "type": "access"})
+    access = create_access_token({"sub": str(user.id), "type": "access", "role": user.role})
     refresh = create_access_token(
         {"sub": str(user.id), "type": "refresh"},
         expires_delta=timedelta(days=config.REFRESH_TOKEN_EXPIRE_DAYS),

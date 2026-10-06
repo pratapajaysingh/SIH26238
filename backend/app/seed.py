@@ -1,5 +1,8 @@
 import argparse
 from datetime import datetime
+import logging
+import os
+import secrets
 import sys
 from sqlalchemy.orm import Session
 from app.core.database import SessionLocal, engine, Base
@@ -14,6 +17,8 @@ from app.models.verification_record import VerificationRecord
 from app.models.manual_review import ManualReview
 from app.models.notification import Notification
 from app.models.application_timeline import ApplicationTimeline
+
+logger = logging.getLogger("tribalsetu")
 
 # Deterministic Demo IDs (UUID v4 format)
 # Student A: Arjun Munda (eligible, active app, verification in progress, payment processing)
@@ -379,6 +384,8 @@ def seed_database(db: Session, reset: bool = False) -> dict:
     
     If reset=True, previously seeded demo records will be deleted first.
     """
+    admin_email = os.getenv("ADMIN_EMAIL", "").strip()
+
     if reset:
         # Delete child records first in dependency order
         db.query(Notification).filter(Notification.id.like("00000000-0000-0000-0000-%")).delete(synchronize_session=False)
@@ -392,6 +399,9 @@ def seed_database(db: Session, reset: bool = False) -> dict:
             db.query(Scholarship).filter(Scholarship.code == s["code"]).delete(synchronize_session=False)
         db.query(Student).filter(Student.id.in_([DEMO_STUDENT_ID, DEMO_STUDENT_ID_2, DEMO_STUDENT_ID_3, DEMO_STUDENT_ID_4])).delete(synchronize_session=False)
         db.query(User).filter(User.id.in_([DEMO_USER_ID, DEMO_USER_ID_2, DEMO_USER_ID_3, DEMO_USER_ID_4, DEMO_ADMIN_USER_ID])).delete(synchronize_session=False)
+        if admin_email:
+            db.query(User).filter(User.email == admin_email).delete(synchronize_session=False)
+        db.query(User).filter(User.email == "admin.mota@tribalsetu.gov.in").delete(synchronize_session=False)
         db.commit()
 
     created_counts = {
@@ -409,29 +419,51 @@ def seed_database(db: Session, reset: bool = False) -> dict:
 
     # 1. Users
     user_definitions = [
-        (DEMO_USER_ID, "Demo Student User", "demo.student@example.com", "DemoPassword123!", "STUDENT"),
-        (DEMO_USER_ID_2, "Demo Student Two", "demo.student2@example.com", "DemoPassword456!", "STUDENT"),
-        (DEMO_USER_ID_3, "Sunita Soren", "demo.student3@example.com", "DemoPassword789!", "STUDENT"),
-        (DEMO_USER_ID_4, "Birsa Kerketta", "demo.student4@example.com", "DemoPassword012!", "STUDENT"),
-        (DEMO_ADMIN_USER_ID, "MoTA Admin Officer", "admin.mota@tribalsetu.gov.in", "AdminSecret123!", "ADMIN"),
+        (DEMO_USER_ID, "Demo Student User", "demo.student@example.com", "STUDENT"),
+        (DEMO_USER_ID_2, "Demo Student Two", "demo.student2@example.com", "STUDENT"),
+        (DEMO_USER_ID_3, "Sunita Soren", "demo.student3@example.com", "STUDENT"),
+        (DEMO_USER_ID_4, "Birsa Kerketta", "demo.student4@example.com", "STUDENT"),
     ]
+    if admin_email:
+        user_definitions.append(
+            (DEMO_ADMIN_USER_ID, "MoTA Admin Officer", admin_email, "ADMIN")
+        )
+    else:
+        logger.info("ADMIN_EMAIL environment variable is not set; skipping admin user creation.")
 
     users = {}
-    for uid, name, email, pwd, role in user_definitions:
+    for uid, name, email, role in user_definitions:
+        unusable_password = hash_password(secrets.token_urlsafe(32))
         u = db.query(User).filter(User.id == uid).first()
         if not u:
             u_by_email = db.query(User).filter(User.email == email).first()
             if not u_by_email:
-                u = User(id=uid, name=name, email=email, password=hash_password(pwd), role=role)
+                u = User(id=uid, name=name, email=email, password=unusable_password, role=role)
                 db.add(u)
                 db.flush()
                 created_counts["users"] += 1
             else:
                 u = u_by_email
+                u.name = name
                 u.role = role
+                u.password = unusable_password
         else:
+            u.email = email
+            u.name = name
             u.role = role
+            u.password = unusable_password
         users[uid] = u
+
+    # Delete legacy admin.mota@tribalsetu.gov.in if unreferenced, otherwise demote to STUDENT
+    legacy_admin = db.query(User).filter(User.email == "admin.mota@tribalsetu.gov.in").first()
+    if legacy_admin and (not admin_email or admin_email != "admin.mota@tribalsetu.gov.in"):
+        has_fk_ref = db.query(Student).filter(Student.user_id == legacy_admin.id).first() is not None
+        if not has_fk_ref:
+            db.delete(legacy_admin)
+            db.flush()
+        else:
+            legacy_admin.role = "STUDENT"
+            legacy_admin.password = hash_password(secrets.token_urlsafe(32))
 
     # 2. Students
     student_definitions = [

@@ -1,63 +1,39 @@
-def test_user_registration_and_login(client, db_session):
-    # Register user
-    reg_res = client.post(
-        "/api/v1/users",
-        json={
-            "name": "Test Applicant",
-            "email": "applicant.test@example.com",
-            "password": "SecretPassword123!",
-        },
-    )
-    assert reg_res.status_code == 200
-    user_data = reg_res.json()
-    assert "id" in user_data
-    assert user_data["email"] == "applicant.test@example.com"
+import uuid
+import pytest
+from app.core.security import hash_password
+from app.models.user import User
 
-    # Duplicate registration
-    dup_res = client.post(
-        "/api/v1/users",
-        json={
-            "name": "Test Applicant",
-            "email": "applicant.test@example.com",
-            "password": "AnotherPassword123!",
-        },
-    )
-    assert dup_res.status_code == 409
 
-    # Valid Login
-    login_res = client.post(
-        "/api/v1/users/login",
-        json={
-            "email": "applicant.test@example.com",
-            "password": "SecretPassword123!",
-        },
+def test_user_creation_and_db_fixture(client, db_session):
+    user = User(
+        id=str(uuid.uuid4()),
+        name="Test Applicant",
+        email="applicant.test@example.com",
+        password=hash_password("UnusableSecret123!"),
+        role="STUDENT",
     )
-    assert login_res.status_code == 200
-    assert login_res.json()["email"] == "applicant.test@example.com"
+    db_session.add(user)
+    db_session.commit()
+    db_session.refresh(user)
 
-    # Invalid Login
-    bad_login = client.post(
-        "/api/v1/users/login",
-        json={
-            "email": "applicant.test@example.com",
-            "password": "WrongPassword!",
-        },
-    )
-    assert bad_login.status_code == 401
+    assert user.id is not None
+    assert user.email == "applicant.test@example.com"
+    assert user.role == "STUDENT"
 
 
 def test_student_creation_and_listing(client, db_session):
-    # Create user first
-    user_res = client.post(
-        "/api/v1/users",
-        json={
-            "name": "Student User",
-            "email": "student.profile@example.com",
-            "password": "Password123!",
-        },
+    # Create user first via DB fixture
+    user = User(
+        id=str(uuid.uuid4()),
+        name="Student User",
+        email="student.profile@example.com",
+        password=hash_password("UnusableSecret123!"),
+        role="STUDENT",
     )
-    assert user_res.status_code == 200
-    user_id = user_res.json()["id"]
+    db_session.add(user)
+    db_session.commit()
+    db_session.refresh(user)
+    user_id = user.id
 
     # Create student profile
     student_res = client.post(

@@ -1,66 +1,12 @@
 from datetime import timedelta
 import pytest
 
-from app.core.security import create_access_token
+from app.core.security import create_access_token, hash_password
+from app.models.user import User
 from app.seed import DEMO_APPLICATION_ID, DEMO_STUDENT_ID, DEMO_USER_ID
 
 
-def test_auth_login_success_with_email(client, seeded_db):
-    """Test successful login using email and password."""
-    response = client.post(
-        "/api/v1/auth/login",
-        json={
-            "email": "demo.student@example.com",
-            "password": "DemoPassword123!",
-        },
-    )
-    assert response.status_code == 200
-    data = response.json()
-    assert "access_token" in data
-    assert isinstance(data["access_token"], str)
-    assert len(data["access_token"]) > 20
-    assert data["token_type"] == "bearer"
 
-
-def test_auth_login_success_with_username(client, seeded_db):
-    """Test successful login using username and password."""
-    response = client.post(
-        "/api/v1/auth/login",
-        json={
-            "username": "Demo Student User",
-            "password": "DemoPassword123!",
-        },
-    )
-    assert response.status_code == 200
-    data = response.json()
-    assert "access_token" in data
-    assert data["token_type"] == "bearer"
-
-
-def test_auth_login_invalid_password(client, seeded_db):
-    """Test login failure with wrong password."""
-    response = client.post(
-        "/api/v1/auth/login",
-        json={
-            "email": "demo.student@example.com",
-            "password": "WrongPassword!",
-        },
-    )
-    assert response.status_code == 401
-    assert response.json()["detail"] == "Invalid credentials"
-
-
-def test_auth_login_nonexistent_user(client, seeded_db):
-    """Test login failure with non-existent user."""
-    response = client.post(
-        "/api/v1/auth/login",
-        json={
-            "email": "unknown.user@example.com",
-            "password": "DemoPassword123!",
-        },
-    )
-    assert response.status_code == 401
-    assert response.json()["detail"] == "Invalid credentials"
 
 
 def test_protected_endpoints_missing_auth_header(client, seeded_db):
@@ -112,19 +58,9 @@ def test_protected_endpoints_expired_jwt(client, seeded_db):
     assert "expired" in res.json()["detail"].lower()
 
 
-def test_authenticated_requests_succeed(client, seeded_db):
+def test_authenticated_requests_succeed(client, seeded_db, auth_headers):
     """Authenticated requests with valid Bearer token succeed across protected endpoints."""
-    # Obtain token
-    login_res = client.post(
-        "/api/v1/auth/login",
-        json={
-            "email": "demo.student@example.com",
-            "password": "DemoPassword123!",
-        },
-    )
-    assert login_res.status_code == 200
-    token = login_res.json()["access_token"]
-    headers = {"Authorization": f"Bearer {token}"}
+    headers = auth_headers
 
     # /auth/me
     auth_me = client.get("/api/v1/auth/me", headers=headers)
@@ -157,68 +93,32 @@ def test_authenticated_requests_succeed(client, seeded_db):
     assert apps_me.json()[0]["id"] == DEMO_APPLICATION_ID
 
 
-def test_passwords_never_returned_in_api_responses(client, seeded_db):
+def test_passwords_never_returned_in_api_responses(client, seeded_db, auth_headers):
     """Verify that password fields are never exposed in any API response."""
-    # 1. Login response
-    login_res = client.post(
-        "/api/v1/auth/login",
-        json={
-            "email": "demo.student@example.com",
-            "password": "DemoPassword123!",
-        },
-    )
-    assert login_res.status_code == 200
-    assert "password" not in login_res.json()
+    headers = auth_headers
 
-    token = login_res.json()["access_token"]
-    headers = {"Authorization": f"Bearer {token}"}
-
-    # 2. /auth/me profile
+    # 1. /auth/me profile
     auth_me = client.get("/api/v1/auth/me", headers=headers)
     assert auth_me.status_code == 200
     assert "password" not in auth_me.json()
+    assert "password_hash" not in auth_me.json()
 
-    # 3. /users/me profile
+    # 2. /users/me profile
     users_me = client.get("/api/v1/users/me", headers=headers)
     assert users_me.status_code == 200
     assert "password" not in users_me.json()
+    assert "password_hash" not in users_me.json()
 
-    # 4. User registration response
-    reg_res = client.post(
-        "/api/v1/users",
-        json={
-            "name": "Audit Applicant",
-            "email": "audit.applicant@example.com",
-            "password": "TestPassword123!",
-        },
-    )
-    assert reg_res.status_code == 200
-    assert "password" not in reg_res.json()
-
-    # 5. Legacy login response
-    legacy_res = client.post(
-        "/api/v1/users/login",
-        json={
-            "email": "audit.applicant@example.com",
-            "password": "TestPassword123!",
-        },
-    )
-    assert legacy_res.status_code == 200
-    assert "password" not in legacy_res.json()
+    # 3. /students/me profile
+    students_me = client.get("/api/v1/students/me", headers=headers)
+    assert students_me.status_code == 200
+    assert "password" not in students_me.json()
+    assert "password_hash" not in students_me.json()
 
 
-def test_jago_authenticated_context_resolves_student_and_application(client, seeded_db):
+def test_jago_authenticated_context_resolves_student_and_application(client, seeded_db, auth_headers):
     """Authenticated JAGO requests automatically resolve current user's student and application."""
-    # Log in as demo student
-    login_res = client.post(
-        "/api/v1/auth/login",
-        json={
-            "email": "demo.student@example.com",
-            "password": "DemoPassword123!",
-        },
-    )
-    token = login_res.json()["access_token"]
-    headers = {"Authorization": f"Bearer {token}"}
+    headers = auth_headers
 
     # 1. Application status query without providing application_id or student_id
     status_res = client.post(

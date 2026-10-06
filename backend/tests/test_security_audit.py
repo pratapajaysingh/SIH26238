@@ -13,17 +13,19 @@ from app.seed import (
 @pytest.fixture
 def auth_headers_student_b(client, seeded_db):
     """Create a second student (Student B) and return authorization headers along with IDs."""
-    # 1. Register User B
-    reg_res = client.post(
-        "/api/v1/users",
-        json={
-            "name": "Student B",
-            "email": "student.b@example.com",
-            "password": "PasswordB123!",
-        },
+    import uuid
+    from app.core.security import hash_password
+    from app.models.user import User
+    user_b = User(
+        id=str(uuid.uuid4()),
+        email="student.b@example.com",
+        name="Student B",
+        password=hash_password("UnusableSecret123!"),
+        role="STUDENT",
     )
-    assert reg_res.status_code == 200
-    user_b_id = reg_res.json()["id"]
+    seeded_db.add(user_b)
+    seeded_db.commit()
+    user_b_id = user_b.id
 
     # 2. Add Student Profile B
     student_res = client.post(
@@ -294,3 +296,110 @@ def test_cross_user_student_profile_creation_blocked(client, seeded_db, auth_hea
     )
     assert response.status_code == 403
     assert "Cannot create student profile for another user" in response.json()["detail"]
+
+
+# ---------------------------------------------------------------------------
+# Unauthenticated and Role Access Tests for Analytics, Manual Review, and DigiLocker
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("path", [
+    "/api/v1/analytics/unreached-beneficiaries",
+    "/api/v1/analytics/unreached-beneficiaries/all",
+    "/api/v1/analytics/dashboard",
+])
+def test_unauthenticated_analytics_get_endpoints_return_401(client, seeded_db, path):
+    """Unauthenticated call to GET analytics endpoints returns 401."""
+    res = client.get(path)
+    assert res.status_code == 401
+
+
+def test_unauthenticated_analytics_outreach_post_returns_401(client, seeded_db):
+    """Unauthenticated call to POST /analytics/unreached-beneficiaries/outreach returns 401."""
+    res = client.post(
+        "/api/v1/analytics/unreached-beneficiaries/outreach",
+        json={"demo_id": "ENROL-ST-002"},
+    )
+    assert res.status_code == 401
+
+
+def test_unauthenticated_manual_reviews_get_returns_401(client, seeded_db):
+    """Unauthenticated call to GET /manual-reviews returns 401."""
+    res = client.get("/api/v1/manual-reviews")
+    assert res.status_code == 401
+
+
+def test_unauthenticated_manual_reviews_decide_post_returns_401(client, seeded_db):
+    """Unauthenticated call to POST /manual-reviews/{id}/decide returns 401."""
+    res = client.post(
+        "/api/v1/manual-reviews/non-existent-review-id/decide",
+        json={"action": "APPROVE", "remarks": "Test"},
+    )
+    assert res.status_code == 401
+
+
+@pytest.mark.parametrize("path", [
+    "/api/v1/analytics/unreached-beneficiaries",
+    "/api/v1/analytics/unreached-beneficiaries/all",
+    "/api/v1/analytics/dashboard",
+])
+def test_student_role_denied_on_analytics_get_endpoints(client, seeded_db, auth_headers, path):
+    """Authenticated student user receives 403 on GET analytics endpoints."""
+    res = client.get(path, headers=auth_headers)
+    assert res.status_code == 403
+    assert "Admin role required" in res.json().get("detail", "")
+
+
+def test_student_role_denied_on_analytics_outreach_post(client, seeded_db, auth_headers):
+    """Authenticated student user receives 403 on POST analytics outreach endpoint."""
+    res = client.post(
+        "/api/v1/analytics/unreached-beneficiaries/outreach",
+        headers=auth_headers,
+        json={"demo_id": "ENROL-ST-002"},
+    )
+    assert res.status_code == 403
+    assert "Admin role required" in res.json().get("detail", "")
+
+
+def test_student_role_denied_on_manual_reviews_get(client, seeded_db, auth_headers):
+    """Authenticated student user receives 403 on GET /manual-reviews."""
+    res = client.get("/api/v1/manual-reviews", headers=auth_headers)
+    assert res.status_code == 403
+    assert "Student accounts cannot access" in res.json().get("detail", "")
+
+
+def test_student_role_denied_on_manual_reviews_decide_post(client, seeded_db, auth_headers):
+    """Authenticated student user receives 403 on POST /manual-reviews/{id}/decide."""
+    res = client.post(
+        "/api/v1/manual-reviews/non-existent-review-id/decide",
+        headers=auth_headers,
+        json={"action": "APPROVE", "remarks": "Malicious attempt"},
+    )
+    assert res.status_code == 403
+    assert "Student accounts cannot resolve" in res.json().get("detail", "")
+
+
+def test_unauthenticated_digilocker_documents_returns_401(client, seeded_db):
+    """Unauthenticated call to GET /students/{id}/digilocker/documents returns 401."""
+    res = client.get(f"/api/v1/students/{DEMO_STUDENT_ID}/digilocker/documents")
+    assert res.status_code == 401
+
+
+def test_cross_student_digilocker_documents_returns_403(client, seeded_db, auth_headers_student_b):
+    """Another student requesting student A's digilocker documents returns 403."""
+    headers_b = auth_headers_student_b["headers"]
+    res = client.get(
+        f"/api/v1/students/{DEMO_STUDENT_ID}/digilocker/documents",
+        headers=headers_b,
+    )
+    assert res.status_code == 403
+    assert "Cannot access another student's DigiLocker assets" in res.json().get("detail", "")
+
+
+def test_admin_can_access_student_digilocker_documents(client, seeded_db, admin_headers):
+    """Admin user CAN access any student's digilocker documents (returns 200)."""
+    res = client.get(
+        f"/api/v1/students/{DEMO_STUDENT_ID}/digilocker/documents",
+        headers=admin_headers,
+    )
+    assert res.status_code == 200
+    assert isinstance(res.json(), list)

@@ -1,8 +1,11 @@
 from app.seed import DEMO_STUDENT_ID
 
 
-def test_list_mock_digilocker_documents(client, seeded_db):
-    response = client.get(f"/api/v1/students/{DEMO_STUDENT_ID}/digilocker/documents")
+def test_list_mock_digilocker_documents(client, seeded_db, auth_headers):
+    response = client.get(
+        f"/api/v1/students/{DEMO_STUDENT_ID}/digilocker/documents",
+        headers=auth_headers,
+    )
     assert response.status_code == 200
     docs = response.json()
     assert len(docs) == 4
@@ -11,10 +14,11 @@ def test_list_mock_digilocker_documents(client, seeded_db):
     assert "MOCK_INCOME_CERTIFICATE" in types
 
 
-def test_import_mock_digilocker_document(client, seeded_db):
+def test_import_mock_digilocker_document(client, seeded_db, auth_headers):
     # Import MOCK_CLASS_12_MARKSHEET (not yet in seeded documents for this student)
     response = client.post(
         f"/api/v1/students/{DEMO_STUDENT_ID}/digilocker/documents/import",
+        headers=auth_headers,
         json={"document_type": "MOCK_CLASS_12_MARKSHEET"},
     )
     assert response.status_code == 200
@@ -26,6 +30,7 @@ def test_import_mock_digilocker_document(client, seeded_db):
     # Attempting to re-import should fail with 409
     dup_res = client.post(
         f"/api/v1/students/{DEMO_STUDENT_ID}/digilocker/documents/import",
+        headers=auth_headers,
         json={"document_type": "MOCK_CLASS_12_MARKSHEET"},
     )
     assert dup_res.status_code == 409
